@@ -2,18 +2,18 @@ services:
   # Backend API
   - type: web
     name: lifelink-backend
-    runtime: node
+    env: node
     buildCommand: cd backend && npm install
     startCommand: cd backend && node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 5000
+        value: 10000
       - key: MONGODB_URI
-        sync: false
+        value: mongodb+srv://akhilkrishnakondri_db_user:Gr3Z0FUZGwX6G2rI@cluster0.7dzw1je.mongodb.net/lifelink?retryWrites=true&w=majority
       - key: JWT_SECRET
-        generateValue: true
+        value: your-super-secret-jwt-key-change-this-in-production-12345
       - key: JWT_EXPIRE
         value: 30d
       - key: ML_SERVICE_URL
@@ -24,9 +24,9 @@ services:
   # ML Service
   - type: web
     name: lifelink-ml
-    runtime: python
+    env: python
     buildCommand: cd ml && pip install -r requirements.txt && python train_model.py
-    startCommand: cd ml && python app.py
+    startCommand: cd ml && gunicorn app:app
     envVars:
       - key: PORT
-        value: 5001
+        value: 10000
