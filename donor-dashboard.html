@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donor Dashboard - LifeLink</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="navbar">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="donor-dashboard.html" class="navbar-brand">🩸 LifeLink</a>
+            <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container" style="margin-top: 2rem;">
+        <div id="alertContainer"></div>
+
+        <!-- Welcome Card -->
+        <div class="card">
+            <h2>Welcome, <span id="userName">Donor</span>! 👋</h2>
+            <p>Blood Group: <span id="bloodGroup" class="blood-group">-</span></p>
+        </div>
+
+        <!-- Availability Toggle -->
+        <div class="card">
+            <div class="toggle-container">
+                <span style="font-weight: 500;">Availability Status:</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="availabilityToggle">
+                    <span class="slider"></span>
+                </label>
+                <span id="availabilityText">-</span>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="dashboard-grid">
+            <div class="stat-card">
+                <h3 id="totalDonations">0</h3>
+                <p>Total Donations</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="daysSinceLast">-</h3>
+                <p>Days Since Last Donation</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="canDonate">-</h3>
+                <p>Can Donate</p>
+            </div>
+        </div>
+
+        <!-- Nearby Requests -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="card-header" style="margin: 0;">Nearby Blood Requests</div>
+                <button class="btn btn-primary" onclick="loadNearbyRequests()">🔄 Refresh</button>
+            </div>
+            
+            <div id="nearbyRequests">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Donation History -->
+        <div class="card">
+            <div class="card-header">Donation History</div>
+            <div id="donationHistory">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/donor.js"></script>
+</body>
+</html>
