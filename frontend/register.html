@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - LifeLink</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>🩸 LifeLink</h1>
+            <p>Create New Account</p>
+        </div>
+    </div>
+
+    <div class="container" style="margin-top: 2rem; max-width: 600px;">
+        <!-- Alert Messages -->
+        <div id="alertContainer"></div>
+
+        <!-- Registration Form -->
+        <div class="card">
+            <div class="card-header">Register</div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" id="name" class="form-control" placeholder="Enter your full name" required minlength="2">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Phone Number (10 digits)</label>
+                    <input type="tel" id="phone" class="form-control" placeholder="10-digit phone number" required pattern="[0-9]{10}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password (min 6 characters)</label>
+                    <input type="password" id="password" class="form-control" placeholder="Create a password" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">I am a</label>
+                    <select id="role" class="form-select" required>
+                        <option value="">Select your role</option>
+                        <option value="donor">Blood Donor</option>
+                        <option value="receiver">Blood Receiver</option>
+                    </select>
+                </div>
+
+                <!-- Donor-specific fields (shown only when donor is selected) -->
+                <div id="donorFields" class="hidden">
+                    <div class="card-header" style="margin-top: 1.5rem;">Donor Profile</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Blood Group</label>
+                        <select id="bloodGroup" class="form-select">
+                            <option value="">Select blood group</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Age Group</label>
+                        <select id="ageGroup" class="form-select">
+                            <option value="">Select age group</option>
+                            <option value="18-25">18-25</option>
+                            <option value="26-35">26-35</option>
+                            <option value="36-45">36-45</option>
+                            <option value="46-60">46-60</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Address</label>
+                        <input type="text" id="address" class="form-control" placeholder="Enter your address">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">City</label>
+                        <input type="text" id="city" class="form-control" placeholder="Enter your city">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">State</label>
+                        <input type="text" id="state" class="form-control" placeholder="Enter your state">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Pincode (6 digits)</label>
+                        <input type="text" id="pincode" class="form-control" placeholder="Enter 6-digit pincode" pattern="[0-9]{6}">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Location Coordinates</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <input type="number" id="latitude" class="form-control" placeholder="Latitude" step="any">
+                            <input type="number" id="longitude" class="form-control" placeholder="Longitude" step="any">
+                        </div>
+                        <button type="button" id="getLocationBtn" class="btn btn-secondary" style="margin-top: 0.5rem;">
+                            📍 Get My Location
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">Register</button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <p>Already have an account? <a href="login.html">Login here</a></p>
+                <p><a href="index.html">Back to Home</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // Show/hide donor fields based on role selection
+        document.getElementById('role').addEventListener('change', function() {
+            const donorFields = document.getElementById('donorFields');
+            if (this.value === 'donor') {
+                donorFields.classList.remove('hidden');
+                // Make donor fields required
+                document.getElementById('bloodGroup').required = true;
+                document.getElementById('ageGroup').required = true;
+                document.getElementById('address').required = true;
+                document.getElementById('city').required = true;
+                document.getElementById('state').required = true;
+                document.getElementById('pincode').required = true;
+                document.getElementById('latitude').required = true;
+                document.getElementById('longitude').required = true;
+            } else {
+                donorFields.classList.add('hidden');
+                // Remove required from donor fields
+                document.getElementById('bloodGroup').required = false;
+                document.getElementById('ageGroup').required = false;
+                document.getElementById('address').required = false;
+                document.getElementById('city').required = false;
+                document.getElementById('state').required = false;
+                document.getElementById('pincode').required = false;
+                document.getElementById('latitude').required = false;
+                document.getElementById('longitude').required = false;
+            }
+        });
+
+        // Get user location
+        document.getElementById('getLocationBtn').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                this.textContent = '📍 Getting location...';
+                this.disabled = true;
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        document.getElementById('latitude').value = position.coords.latitude.toFixed(6);
+                        document.getElementById('longitude').value = position.coords.longitude.toFixed(6);
+                        this.textContent = '✓ Location obtained';
+                        setTimeout(() => {
+                            this.textContent = '📍 Get My Location';
+                            this.disabled = false;
+                        }, 2000);
+                    },
+                    (error) => {
+                        showAlert('Unable to get location. Please enter manually.', 'danger');
+                        this.textContent = '📍 Get My Location';
+                        this.disabled = false;
+                    }
+                );
+            } else {
+                showAlert('Geolocation is not supported by your browser', 'danger');
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    </script>
+</body>
+</html>

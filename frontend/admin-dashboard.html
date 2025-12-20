@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - LifeLink</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="navbar">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="admin-dashboard.html" class="navbar-brand">🩸 LifeLink Admin</a>
+            <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container" style="margin-top: 2rem;">
+        <div id="alertContainer"></div>
+
+        <!-- Welcome Card -->
+        <div class="card">
+            <h2>Admin Dashboard 👨‍💼</h2>
+            <p>Monitor and manage the LifeLink platform</p>
+        </div>
+
+        <!-- Statistics -->
+        <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div class="stat-card">
+                <h3 id="totalUsers">0</h3>
+                <p>Total Users</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalDonors">0</h3>
+                <p>Total Donors</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="availableDonors">0</h3>
+                <p>Available Donors</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalRequests">0</h3>
+                <p>Total Requests</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="pendingRequests">0</h3>
+                <p>Pending Requests</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="fakeRequests">0</h3>
+                <p>Fake Requests (AI Detected)</p>
+            </div>
+        </div>
+
+        <!-- Flagged Requests for Review -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="card-header" style="margin: 0;">🚩 Flagged Requests (AI Detected)</div>
+                <button class="btn btn-primary" onclick="loadFlaggedRequests()">🔄 Refresh</button>
+            </div>
+            
+            <div id="flaggedRequests">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- All Requests -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="card-header" style="margin: 0;">All Blood Requests</div>
+                <button class="btn btn-primary" onclick="loadAllRequests()">🔄 Refresh</button>
+            </div>
+            
+            <div id="allRequests">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        // Admin-specific JavaScript
+        let token = localStorage.getItem('token');
+        let userData = JSON.parse(localStorage.getItem('user') || '{}');
+
+        // Check authentication and authorization
+        if (!token || userData.role !== 'admin') {
+            window.location.href = 'login.html';
+        }
+
+        // Load dashboard data on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDashboardStats();
+            loadFlaggedRequests();
+            loadAllRequests();
+        });
+
+        async function loadDashboardStats() {
+            try {
+                const response = await apiRequest('/api/admin/stats', 'GET');
+                
+                if (response.success) {
+                    const stats = response.data;
+                    document.getElementById('totalUsers').textContent = stats.users.total;
+                    document.getElementById('totalDonors').textContent = stats.users.donors;
+                    document.getElementById('availableDonors').textContent = stats.users.availableDonors;
+                    document.getElementById('totalRequests').textContent = stats.requests.total;
+                    document.getElementById('pendingRequests').textContent = stats.requests.pending;
+                    document.getElementById('fakeRequests').textContent = stats.requests.fake;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadFlaggedRequests() {
+            const container = document.getElementById('flaggedRequests');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await apiRequest('/api/admin/flagged-requests', 'GET');
+                
+                if (response.success && response.data.length > 0) {
+                    container.innerHTML = response.data.map(analysis => {
+                        const request = analysis.requestId;
+                        return `
+                            <div class="request-card" style="border-left-color: #dc3545;">
+                                <div class="request-header">
+                                    <div>
+                                        <span class="blood-group">${request.bloodGroup}</span>
+                                        <span class="badge badge-${request.urgency}">${request.urgency.toUpperCase()}</span>
+                                        <span class="badge" style="background-color: #dc3545; color: white;">AI: FAKE</span>
+                                    </div>
+                                </div>
+                                <div class="request-info">
+                                    <div class="info-item">
+                                        <span class="info-label">Hospital</span>
+                                        <span class="info-value">${request.hospitalName}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Patient</span>
+                                        <span class="info-value">${request.patientName}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">ML Score</span>
+                                        <span class="info-value">${analysis.mlScore.toFixed(4)}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Requests/Day</span>
+                                        <span class="info-value">${analysis.features.requestsPerDay}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Account Age</span>
+                                        <span class="info-value">${analysis.features.accountAgeDays} days</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Time Gap</span>
+                                        <span class="info-value">${analysis.features.timeGapHours} hrs</span>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem;">
+                                    <button class="btn btn-success" onclick="approveRequest('${request._id}')">✓ Approve (Genuine)</button>
+                                    <button class="btn btn-danger" onclick="rejectRequest('${request._id}')">✗ Reject (Fake)</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✓</div><p>No flagged requests to review</p></div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="alert alert-danger">Error loading flagged requests</div>';
+            }
+        }
+
+        async function loadAllRequests() {
+            const container = document.getElementById('allRequests');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await apiRequest('/api/admin/requests?limit=20', 'GET');
+                
+                if (response.success && response.data.length > 0) {
+                    container.innerHTML = response.data.map(request => `
+                        <div class="request-card ${request.urgency}">
+                            <div class="request-header">
+                                <div>
+                                    <span class="blood-group">${request.bloodGroup}</span>
+                                    <span class="badge badge-${request.urgency}">${request.urgency.toUpperCase()}</span>
+                                    <span class="badge badge-${request.status}">${request.status.toUpperCase()}</span>
+                                    ${request.isFake ? '<span class="badge" style="background-color: #dc3545; color: white;">FAKE</span>' : ''}
+                                </div>
+                            </div>
+                            <div class="request-info">
+                                <div class="info-item">
+                                    <span class="info-label">Hospital</span>
+                                    <span class="info-value">${request.hospitalName}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Patient</span>
+                                    <span class="info-value">${request.patientName}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Units</span>
+                                    <span class="info-value">${request.unitsRequired}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Created</span>
+                                    <span class="info-value">${new Date(request.createdAt).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No requests found</p></div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="alert alert-danger">Error loading requests</div>';
+            }
+        }
+
+        async function approveRequest(requestId) {
+            if (!confirm('Are you sure you want to approve this request as genuine?')) return;
+
+            try {
+                const response = await apiRequest(`/api/admin/approve-request/${requestId}`, 'PUT', {
+                    adminNotes: 'Manually reviewed and approved by admin'
+                });
+
+                if (response.success) {
+                    showAlert('Request approved successfully', 'success');
+                    loadFlaggedRequests();
+                    loadAllRequests();
+                    loadDashboardStats();
+                }
+            } catch (error) {
+                showAlert('Error approving request', 'danger');
+            }
+        }
+
+        async function rejectRequest(requestId) {
+            if (!confirm('Are you sure you want to reject this request as fake?')) return;
+
+            try {
+                const response = await apiRequest(`/api/admin/reject-request/${requestId}`, 'PUT', {
+                    adminNotes: 'Confirmed as fake by admin review'
+                });
+
+                if (response.success) {
+                    showAlert('Request rejected successfully', 'success');
+                    loadFlaggedRequests();
+                    loadAllRequests();
+                    loadDashboardStats();
+                }
+            } catch (error) {
+                showAlert('Error rejecting request', 'danger');
+            }
+        }
+    </script>
+</body>
+</html>

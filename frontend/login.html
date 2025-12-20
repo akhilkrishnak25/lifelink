@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - LifeLink</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>🩸 LifeLink</h1>
+            <p>Login to Your Account</p>
+        </div>
+    </div>
+
+    <div class="container" style="margin-top: 2rem; max-width: 500px;">
+        <!-- Alert Messages -->
+        <div id="alertContainer"></div>
+
+        <!-- Login Form -->
+        <div class="card">
+            <div class="card-header">Login</div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <p>Don't have an account? <a href="register.html">Register here</a></p>
+                <p><a href="index.html">Back to Home</a></p>
+            </div>
+        </div>
+
+        <!-- Sample Credentials -->
+        <div class="card">
+            <div class="card-header">Test Credentials</div>
+            <p style="font-size: 0.875rem; color: #666; margin-bottom: 1rem;">Use these credentials to test the application:</p>
+            
+            <div style="background-color: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                <strong>Donor Account:</strong><br>
+                Email: donor@test.com<br>
+                Password: donor123
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                <strong>Receiver Account:</strong><br>
+                Email: receiver@test.com<br>
+                Password: receiver123
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                <strong>Admin Account:</strong><br>
+                Email: admin@test.com<br>
+                Password: admin123
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    </script>
+</body>
+</html>

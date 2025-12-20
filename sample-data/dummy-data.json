@@ -1,0 +1,194 @@
+{
+  "testUsers": [
+    {
+      "name": "John Donor",
+      "email": "donor@test.com",
+      "password": "donor123",
+      "phone": "9876543210",
+      "role": "donor",
+      "donorData": {
+        "bloodGroup": "O+",
+        "ageGroup": "26-35",
+        "address": "123 Main Street",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400001",
+        "latitude": 19.0760,
+        "longitude": 72.8777
+      }
+    },
+    {
+      "name": "Jane Donor",
+      "email": "donor2@test.com",
+      "password": "donor123",
+      "phone": "9876543211",
+      "role": "donor",
+      "donorData": {
+        "bloodGroup": "A+",
+        "ageGroup": "18-25",
+        "address": "456 Park Avenue",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400002",
+        "latitude": 19.0896,
+        "longitude": 72.8656
+      }
+    },
+    {
+      "name": "Mary Receiver",
+      "email": "receiver@test.com",
+      "password": "receiver123",
+      "phone": "9876543212",
+      "role": "receiver"
+    },
+    {
+      "name": "Admin User",
+      "email": "admin@test.com",
+      "password": "admin123",
+      "phone": "9876543213",
+      "role": "admin"
+    }
+  ],
+  "sampleBloodRequests": [
+    {
+      "bloodGroup": "O+",
+      "urgency": "critical",
+      "hospitalName": "Apollo Hospital",
+      "patientName": "Rajesh Kumar",
+      "contactNumber": "9876543220",
+      "unitsRequired": 2,
+      "address": "Apollo Hospital, Greams Lane",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "pincode": "600006",
+      "latitude": 13.0569,
+      "longitude": 80.2425,
+      "description": "Urgent requirement for accident victim"
+    },
+    {
+      "bloodGroup": "A+",
+      "urgency": "urgent",
+      "hospitalName": "Lilavati Hospital",
+      "patientName": "Priya Sharma",
+      "contactNumber": "9876543221",
+      "unitsRequired": 1,
+      "address": "Lilavati Hospital, Bandra West",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pincode": "400050",
+      "latitude": 19.0596,
+      "longitude": 72.8295,
+      "description": "Required for surgery"
+    },
+    {
+      "bloodGroup": "B-",
+      "urgency": "normal",
+      "hospitalName": "Fortis Hospital",
+      "patientName": "Amit Patel",
+      "contactNumber": "9876543222",
+      "unitsRequired": 3,
+      "address": "Fortis Hospital, Mulund",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pincode": "400080",
+      "latitude": 19.1722,
+      "longitude": 72.9565,
+      "description": "Scheduled transfusion"
+    }
+  ],
+  "bloodGroupCompatibility": {
+    "O-": {
+      "canDonateTo": ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"],
+      "canReceiveFrom": ["O-"]
+    },
+    "O+": {
+      "canDonateTo": ["O+", "A+", "B+", "AB+"],
+      "canReceiveFrom": ["O-", "O+"]
+    },
+    "A-": {
+      "canDonateTo": ["A-", "A+", "AB-", "AB+"],
+      "canReceiveFrom": ["O-", "A-"]
+    },
+    "A+": {
+      "canDonateTo": ["A+", "AB+"],
+      "canReceiveFrom": ["O-", "O+", "A-", "A+"]
+    },
+    "B-": {
+      "canDonateTo": ["B-", "B+", "AB-", "AB+"],
+      "canReceiveFrom": ["O-", "B-"]
+    },
+    "B+": {
+      "canDonateTo": ["B+", "AB+"],
+      "canReceiveFrom": ["O-", "O+", "B-", "B+"]
+    },
+    "AB-": {
+      "canDonateTo": ["AB-", "AB+"],
+      "canReceiveFrom": ["O-", "A-", "B-", "AB-"]
+    },
+    "AB+": {
+      "canDonateTo": ["AB+"],
+      "canReceiveFrom": ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"]
+    }
+  },
+  "apiTestData": {
+    "registerDonor": {
+      "endpoint": "POST /api/auth/register",
+      "payload": {
+        "name": "Test Donor",
+        "email": "testdonor@example.com",
+        "password": "test123",
+        "phone": "9999999999",
+        "role": "donor",
+        "donorData": {
+          "bloodGroup": "O+",
+          "ageGroup": "26-35",
+          "address": "Test Address",
+          "city": "Test City",
+          "state": "Test State",
+          "pincode": "123456",
+          "latitude": 19.0760,
+          "longitude": 72.8777
+        }
+      }
+    },
+    "login": {
+      "endpoint": "POST /api/auth/login",
+      "payload": {
+        "email": "donor@test.com",
+        "password": "donor123"
+      }
+    },
+    "createBloodRequest": {
+      "endpoint": "POST /api/receiver/request",
+      "payload": {
+        "bloodGroup": "O+",
+        "urgency": "critical",
+        "hospitalName": "Test Hospital",
+        "patientName": "Test Patient",
+        "contactNumber": "9999999999",
+        "unitsRequired": 2,
+        "address": "Test Hospital Address",
+        "city": "Test City",
+        "state": "Test State",
+        "pincode": "123456",
+        "latitude": 19.0760,
+        "longitude": 72.8777,
+        "description": "Test emergency request"
+      }
+    }
+  },
+  "mlTestFeatures": {
+    "genuineRequest": {
+      "requests_per_day": 0,
+      "account_age_days": 180,
+      "time_gap_hours": 720,
+      "location_changes": 0
+    },
+    "fakeRequest": {
+      "requests_per_day": 5,
+      "account_age_days": 7,
+      "time_gap_hours": 2,
+      "location_changes": 5
+    }
+  }
+}
