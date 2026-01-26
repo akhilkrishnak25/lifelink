@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Transparency - LifeLink</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#dc3545">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <style>
+        .ai-container {
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            text-align: center;
+        }
+        .metric-card h2 {
+            font-size: 2rem;
+            margin: 0;
+        }
+        .metric-card p {
+            margin: 0.25rem 0 0 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+        .feature-item {
+            background: #f8f9fa;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid #667eea;
+        }
+        .feature-item strong {
+            display: block;
+            color: #333;
+        }
+        .feature-item span {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .accuracy-ring {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .accuracy-ring svg {
+            transform: rotate(-90deg);
+        }
+        .accuracy-ring circle {
+            fill: none;
+            stroke-width: 12;
+        }
+        .accuracy-ring .bg {
+            stroke: #e9ecef;
+        }
+        .accuracy-ring .progress {
+            stroke: #28a745;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s ease;
+        }
+        .accuracy-ring .value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: #333;
+        }
+        .explanation-card {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .explanation-card h4 {
+            margin: 0 0 0.5rem 0;
+            color: #856404;
+        }
+        .explanation-card p {
+            margin: 0;
+            color: #856404;
+            font-size: 0.9rem;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+            margin-top: 1rem;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #667eea;
+        }
+        .timeline-item {
+            position: relative;
+            padding-bottom: 1rem;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -1.75rem;
+            top: 0.25rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 2px solid white;
+        }
+        .timeline-item h5 {
+            margin: 0;
+            color: #333;
+        }
+        .timeline-item p {
+            margin: 0.25rem 0 0 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 0.5rem;
+            height: 80px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button id="themeToggle" style="position: fixed; top: 1rem; right: 1rem; z-index: 1000; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; background: var(--bg-card, #fff); box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">
+        🌙 Dark Mode
+    </button>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <h1>🤖 AI Transparency</h1>
+            <p>Understanding how LifeLink's fraud detection system works</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container ai-container">
+        <!-- AI Metrics Card -->
+        <div class="card">
+            <div class="card-header">📊 Live AI Metrics</div>
+            
+            <div id="metricsLoading" class="loading-shimmer" style="margin-bottom: 1rem;"></div>
+            
+            <div id="metricsContent" style="display: none;">
+                <div class="metric-grid" id="metricGrid">
+                    <!-- Filled by JS -->
+                </div>
+
+                <div style="display: flex; justify-content: center; margin: 1.5rem 0;">
+                    <div class="accuracy-ring" id="accuracyRing">
+                        <svg width="150" height="150">
+                            <circle class="bg" cx="75" cy="75" r="60"></circle>
+                            <circle class="progress" cx="75" cy="75" r="60" 
+                                stroke-dasharray="377" 
+                                stroke-dashoffset="377"
+                                id="accuracyCircle"></circle>
+                        </svg>
+                        <div class="value" id="accuracyValue">--%</div>
+                    </div>
+                </div>
+                <p style="text-align: center; color: #666;">Average AI Confidence Score</p>
+            </div>
+
+            <div id="metricsError" style="display: none; color: #dc3545; text-align: center; padding: 1rem;"></div>
+        </div>
+
+        <!-- Features Used -->
+        <div class="card">
+            <div class="card-header">🔬 Detection Features</div>
+            <p style="color: #666; margin-bottom: 1rem;">Our AI analyzes these factors to detect potentially fraudulent requests:</p>
+            
+            <div class="feature-list" id="featureList">
+                <!-- Filled by JS -->
+            </div>
+
+            <div class="explanation-card">
+                <h4>⚖️ Fair Use Notice</h4>
+                <p>Our AI is designed to assist, not replace, human judgment. Flagged requests are always reviewed by administrators before any action is taken. False positives may occur, and genuine requests are never automatically rejected.</p>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="card">
+            <div class="card-header">⚙️ How the AI Works</div>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h5>1. Data Collection</h5>
+                    <p>When a blood request is submitted, we collect anonymous metadata about the request patterns.</p>
+                </div>
+                <div class="timeline-item">
+                    <h5>2. Feature Extraction</h5>
+                    <p>The system extracts 8 key features like request frequency, timing, and historical patterns.</p>
+                </div>
+                <div class="timeline-item">
+                    <h5>3. ML Analysis</h5>
+                    <p>A Random Forest classifier trained on historical data evaluates the request.</p>
+                </div>
+                <div class="timeline-item">
+                    <h5>4. Risk Scoring</h5>
+                    <p>Each request receives a risk score from 0% (very likely genuine) to 100% (very likely fake).</p>
+                </div>
+                <div class="timeline-item">
+                    <h5>5. Human Review</h5>
+                    <p>High-risk requests are flagged for admin review. Only humans make final decisions.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Model Info -->
+        <div class="card">
+            <div class="card-header">📋 Model Information</div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.75rem 0; color: #666;">Model Type</td>
+                    <td style="padding: 0.75rem 0; text-align: right;"><strong>Random Forest Classifier</strong></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.75rem 0; color: #666;">Version</td>
+                    <td style="padding: 0.75rem 0; text-align: right;" id="modelVersion"><strong>1.0</strong></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.75rem 0; color: #666;">Training Data</td>
+                    <td style="padding: 0.75rem 0; text-align: right;"><strong>Synthetic + Historical</strong></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.75rem 0; color: #666;">Update Frequency</td>
+                    <td style="padding: 0.75rem 0; text-align: right;"><strong>Monthly</strong></td>
+                </tr>
+                <tr>
+                    <td style="padding: 0.75rem 0; color: #666;">Flagging Threshold</td>
+                    <td style="padding: 0.75rem 0; text-align: right;"><strong>&gt;70% Risk Score</strong></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Back Link -->
+        <div style="text-align: center; margin-top: 1rem;">
+            <a href="index.html" class="btn btn-secondary">← Back to Home</a>
+            <a href="verify.html" class="btn btn-secondary" style="margin-left: 0.5rem;">🔍 Verify a Request</a>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/theme.js"></script>
+    <script>
+        const featureDescriptions = {
+            'request_frequency': { name: 'Request Frequency', desc: 'How often the user creates requests' },
+            'hour_of_day': { name: 'Time Pattern', desc: 'Unusual submission hours' },
+            'location_variance': { name: 'Location Variance', desc: 'Geographic consistency' },
+            'urgency_pattern': { name: 'Urgency Pattern', desc: 'Overuse of emergency flags' },
+            'units_requested': { name: 'Units Requested', desc: 'Unusually high blood unit demands' },
+            'description_length': { name: 'Description Quality', desc: 'Detail level in request descriptions' },
+            'historical_completion_rate': { name: 'Completion History', desc: 'Past request fulfillment rate' },
+            'account_age_days': { name: 'Account Age', desc: 'Time since account creation' }
+        };
+
+        async function loadAIMetrics() {
+            const loading = document.getElementById('metricsLoading');
+            const content = document.getElementById('metricsContent');
+            const error = document.getElementById('metricsError');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/public/ai-metrics`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to load metrics');
+                }
+
+                const metrics = data.data;
+
+                // Populate metric cards
+                document.getElementById('metricGrid').innerHTML = `
+                    <div class="metric-card">
+                        <h2>${metrics.totalAnalyzed.toLocaleString()}</h2>
+                        <p>Requests Analyzed</p>
+                    </div>
+                    <div class="metric-card" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                        <h2>${metrics.genuine.toLocaleString()}</h2>
+                        <p>Genuine Requests</p>
+                    </div>
+                    <div class="metric-card" style="background: linear-gradient(135deg, #dc3545, #fd7e14);">
+                        <h2>${metrics.flaggedFake.toLocaleString()}</h2>
+                        <p>Flagged for Review</p>
+                    </div>
+                `;
+
+                // Accuracy ring animation
+                const confidence = parseFloat(metrics.avgConfidence) || 85;
+                const circumference = 2 * Math.PI * 60; // r=60
+                const offset = circumference - (confidence / 100) * circumference;
+                
+                setTimeout(() => {
+                    document.getElementById('accuracyCircle').style.strokeDashoffset = offset;
+                    document.getElementById('accuracyValue').textContent = `${Math.round(confidence)}%`;
+                }, 100);
+
+                // Model version
+                document.getElementById('modelVersion').innerHTML = `<strong>v${metrics.modelVersion}</strong>`;
+
+                // Feature list
+                const featureList = document.getElementById('featureList');
+                featureList.innerHTML = metrics.features.map(f => {
+                    const info = featureDescriptions[f] || { name: f.replace(/_/g, ' '), desc: 'Analysis factor' };
+                    return `
+                        <div class="feature-item">
+                            <strong>${info.name}</strong>
+                            <span>${info.desc}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                loading.style.display = 'none';
+                content.style.display = 'block';
+
+            } catch (err) {
+                console.error('AI metrics error:', err);
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                error.innerHTML = `
+                    <p>⚠️ Unable to load AI metrics</p>
+                    <p style="font-size: 0.9rem;">${err.message}</p>
+                    <button class="btn btn-primary" onclick="loadAIMetrics()" style="margin-top: 0.5rem;">Retry</button>
+                `;
+            }
+        }
+
+        // Load metrics on page load
+        loadAIMetrics();
+    </script>
+</body>
+</html>

@@ -59,25 +59,26 @@
 
       <div class="dashboard-grid">
         <div class="stat-card">
-          <h3>👤</h3>
+          <h3 id="dashDonations">--</h3>
+          <p><strong>My Donations</strong></p>
+        </div>
+        <div class="stat-card">
+          <h3 id="dashRequests">--</h3>
+          <p><strong>My Requests</strong></p>
+        </div>
+        <div class="stat-card">
+          <h3 id="dashProfile">--</h3>
           <p><strong>Profile</strong></p>
-          <p>Manage your details and preferences.</p>
         </div>
         <div class="stat-card">
-          <h3>📊</h3>
-          <p><strong>Weekly Charts</strong></p>
-          <p>View your weekly activity and stats.</p>
+          <h3 id="dashDonorStatus">--</h3>
+          <p><strong>Donor Profile</strong></p>
         </div>
-        <div class="stat-card">
-          <h3>🎮</h3>
-          <p><strong>Gamification</strong></p>
-          <p>Points, badges, achievements and leaderboard.</p>
-        </div>
-        <div class="stat-card">
-          <h3>🩸</h3>
-          <p><strong>Donor / Receiver</strong></p>
-          <p>Switch between donor and receiver anytime.</p>
-        </div>
+      </div>
+
+      <div class="card" id="donorPromptCard" style="display:none;">
+        <div class="card-header">Complete Donor Profile</div>
+        <p>You haven't set up a donor profile yet. <a href="donor-dashboard.html">Set it up now</a> to start donating.</p>
       </div>
     </main>
   </div>
@@ -86,5 +87,24 @@
   <script src="js/theme.js"></script>
   <script src="js/pwa.js"></script>
   <script src="js/sidebar.js"></script>
+  <script>
+    // Fetch dashboard data
+    (async function loadDashboard() {
+      try {
+        const res = await apiRequest('/api/auth/dashboard');
+        if (res.success) {
+          document.getElementById('dashDonations').textContent = res.data.myDonations;
+          document.getElementById('dashRequests').textContent = res.data.myRequests;
+          document.getElementById('dashProfile').textContent = res.data.profileComplete ? '✓ Complete' : '⚠ Incomplete';
+          document.getElementById('dashDonorStatus').textContent = res.data.donorProfileExists ? '✓ Active' : '✗ Not Set';
+          if (!res.data.donorProfileExists) {
+            document.getElementById('donorPromptCard').style.display = 'block';
+          }
+        }
+      } catch (e) {
+        console.error('Dashboard load error', e);
+      }
+    })();
+  </script>
 </body>
 </html>

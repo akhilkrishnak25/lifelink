@@ -10,7 +10,9 @@ const {
   login,
   getMe,
   updateProfile,
-  logout
+  logout,
+  getDashboard,
+  getWeekly
 } = require('../controllers/auth.controller');
 
 // Public routes
@@ -19,6 +21,8 @@ router.post('/login', validateLogin, login);
 
 // Protected routes
 router.get('/me', protect, getMe);
+router.get('/dashboard', protect, getDashboard);
+router.get('/weekly', protect, getWeekly);
 router.put('/profile', protect, updateProfile);
 router.post('/logout', protect, logout);
 

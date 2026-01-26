@@ -16,7 +16,12 @@ if (userData.role === 'admin') {
 
 // Load donor data on page load
 window.addEventListener('DOMContentLoaded', async () => {
-  await loadDonorProfile();
+  const profileLoaded = await loadDonorProfile();
+  if (!profileLoaded) {
+    // Show create profile prompt instead of rest
+    showNoDonorProfilePrompt();
+    return;
+  }
   await loadDonorStats();
   await loadNearbyRequests();
   await loadDonationHistory();
@@ -25,8 +30,88 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupAvailabilityToggle();
 });
 
+function showNoDonorProfilePrompt() {
+  const container = document.querySelector('.container');
+  container.innerHTML = `
+    <div class="card" style="margin-top:2rem;">
+      <div class="card-header">Set Up Donor Profile</div>
+      <p>You haven't created a donor profile yet. Fill in the form below to start donating.</p>
+      <form id="donorProfileForm" style="margin-top:1rem;">
+        <div class="form-group">
+          <label class="form-label">Blood Group</label>
+          <select id="bloodGroup" class="form-select" required>
+            <option value="">Select blood group</option>
+            <option value="A+">A+</option><option value="A-">A-</option>
+            <option value="B+">B+</option><option value="B-">B-</option>
+            <option value="AB+">AB+</option><option value="AB-">AB-</option>
+            <option value="O+">O+</option><option value="O-">O-</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age Group</label>
+          <select id="ageGroup" class="form-select" required>
+            <option value="">Select age group</option>
+            <option value="18-25">18-25</option>
+            <option value="26-35">26-35</option>
+            <option value="36-45">36-45</option>
+            <option value="46-60">46-60</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Address</label><input type="text" id="address" class="form-control" required></div>
+        <div class="form-group"><label class="form-label">City</label><input type="text" id="city" class="form-control" required></div>
+        <div class="form-group"><label class="form-label">State</label><input type="text" id="state" class="form-control" required></div>
+        <div class="form-group"><label class="form-label">Pincode</label><input type="text" id="pincode" class="form-control" required pattern="[0-9]{6}"></div>
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <input type="number" id="latitude" class="form-control" placeholder="Latitude" step="any" required>
+            <input type="number" id="longitude" class="form-control" placeholder="Longitude" step="any" required>
+          </div>
+          <button type="button" class="btn btn-secondary" style="margin-top:.5rem;" onclick="getGeoLocation()">📍 Get Location</button>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Create Profile</button>
+      </form>
+    </div>
+  `;
+
+  document.getElementById('donorProfileForm').addEventListener('submit', handleCreateDonorProfile);
+}
+
+function getGeoLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('latitude').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('longitude').value = pos.coords.longitude.toFixed(6);
+    }, () => alert('Unable to get location'));
+  }
+}
+
+async function handleCreateDonorProfile(e) {
+  e.preventDefault();
+  const data = {
+    bloodGroup: document.getElementById('bloodGroup').value,
+    ageGroup: document.getElementById('ageGroup').value,
+    address: document.getElementById('address').value,
+    city: document.getElementById('city').value,
+    state: document.getElementById('state').value,
+    pincode: document.getElementById('pincode').value,
+    latitude: parseFloat(document.getElementById('latitude').value),
+    longitude: parseFloat(document.getElementById('longitude').value)
+  };
+  try {
+    const res = await apiRequest('/api/donor/profile', 'POST', data);
+    if (res.success) {
+      alert('Donor profile created!');
+      location.reload();
+    }
+  } catch (err) {
+    alert('Error creating profile: ' + err.message);
+  }
+}
+
 /**
  * Load donor profile
+ * Returns true if profile exists, false otherwise
  */
 async function loadDonorProfile() {
   try {
@@ -43,9 +128,12 @@ async function loadDonorProfile() {
       const toggle = document.getElementById('availabilityToggle');
       toggle.checked = donorData.isAvailable;
       updateAvailabilityText(donorData.isAvailable);
+      return true;
     }
+    return false;
   } catch (error) {
-    showAlert('Error loading profile: ' + error.message, 'danger');
+    // Profile not found – show prompt
+    return false;
   }
 }
 

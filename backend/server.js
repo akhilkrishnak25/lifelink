@@ -61,6 +61,7 @@ app.use('/api/ratings', require('./routes/rating.routes'));
 app.use('/api/preferences', require('./routes/preference.routes'));
 app.use('/api/camps', require('./routes/camp.routes'));
 app.use('/api/referral', require('./routes/referral.routes'));
+app.use('/api/public', require('./routes/public.routes'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

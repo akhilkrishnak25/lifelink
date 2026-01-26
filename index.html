@@ -39,6 +39,34 @@
             </div>
         </div>
 
+        <!-- Live System Stats -->
+        <div class="card" id="liveStatsCard">
+            <div class="card-header">📊 Live System Stats</div>
+            <div id="statsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; text-align: center;">
+                <div class="stat-card">
+                    <h3 id="statUsers">--</h3>
+                    <p>Users</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="statDonors">--</h3>
+                    <p>Active Donors</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="statRequests">--</h3>
+                    <p>Pending Requests</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="statDonations">--</h3>
+                    <p>Completed Donations</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="statCities">--</h3>
+                    <p>Cities Served</p>
+                </div>
+            </div>
+            <p id="statsError" style="color:#dc3545;display:none;margin-top:0.5rem;"></p>
+        </div>
+
         <!-- New Features Highlight -->
         <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
             <div class="card-header" style="color: white; border-bottom: 1px solid rgba(255,255,255,0.2);">🆕 New in Version 2.0</div>
@@ -110,6 +138,20 @@
             <div style="display: grid; gap: 1rem;">
                 <a href="login.html" class="btn btn-primary btn-block">Login to Your Account</a>
                 <a href="register.html" class="btn btn-success btn-block">Create New Account</a>
+            </div>
+        </div>
+
+        <!-- Trust & Transparency -->
+        <div class="card" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white;">
+            <div class="card-header" style="color: white; border-bottom: 1px solid rgba(255,255,255,0.2);">🛡️ Trust & Transparency</div>
+            <p style="margin-bottom: 1rem; opacity: 0.9;">We believe in complete transparency about how our system works.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <a href="verify.html" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    🔍 Verify a Request
+                </a>
+                <a href="ai-transparency.html" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    🤖 AI Transparency
+                </a>
             </div>
         </div>
 
@@ -206,9 +248,46 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/common.js"></script>
     <script src="js/theme.js"></script>
     <script src="js/pwa.js"></script>
     <script>
+        // Fetch live stats from backend
+        (async function loadStats() {
+            try {
+                const resp = await fetch(API_BASE_URL + '/api/public/stats');
+                const json = await resp.json();
+                if (json.success) {
+                    animateCounter('statUsers', json.data.totalUsers);
+                    animateCounter('statDonors', json.data.activeDonors);
+                    animateCounter('statRequests', json.data.pendingRequests);
+                    animateCounter('statDonations', json.data.completedDonations);
+                    animateCounter('statCities', json.data.citiesServed);
+                } else {
+                    document.getElementById('statsError').textContent = 'Unable to load stats';
+                    document.getElementById('statsError').style.display = 'block';
+                }
+            } catch (e) {
+                document.getElementById('statsError').textContent = 'Backend unreachable';
+                document.getElementById('statsError').style.display = 'block';
+            }
+        })();
+
+        function animateCounter(id, target) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            let current = 0;
+            const step = Math.max(1, Math.ceil(target / 30));
+            const interval = setInterval(() => {
+                current += step;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(interval);
+                }
+                el.textContent = current;
+            }, 30);
+        }
+
         // Initialize theme manager
         const themeManager = new ThemeManager();
         const themeToggle = document.getElementById('themeToggle');

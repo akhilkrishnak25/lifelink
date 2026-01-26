@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Blood Request - LifeLink</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#dc3545">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <style>
+        .verify-container {
+            max-width: 600px;
+            margin: 2rem auto;
+        }
+        .verify-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .verify-form input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        .verify-form input:focus {
+            border-color: #dc3545;
+            outline: none;
+        }
+        .result-card {
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-top: 1rem;
+        }
+        .result-card.genuine {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        .result-card.flagged {
+            background: linear-gradient(135deg, #dc3545, #fd7e14);
+            color: white;
+        }
+        .result-card.not-found {
+            background: #6c757d;
+            color: white;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-genuine { background: #28a745; color: white; }
+        .status-pending { background: #ffc107; color: #333; }
+        .status-completed { background: #17a2b8; color: white; }
+        .status-flagged { background: #dc3545; color: white; }
+        .trust-meter {
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+        .trust-meter-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .verification-badge {
+            text-align: center;
+            padding: 2rem;
+        }
+        .verification-badge .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        .how-it-works {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1.5rem;
+        }
+        .how-it-works h4 {
+            margin-bottom: 0.75rem;
+            color: #333;
+        }
+        .how-it-works ol {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+        .how-it-works li {
+            margin-bottom: 0.5rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button id="themeToggle" style="position: fixed; top: 1rem; right: 1rem; z-index: 1000; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; background: var(--bg-card, #fff); box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">
+        🌙 Dark Mode
+    </button>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <h1>🔍 Verify Blood Request</h1>
+            <p>Check the authenticity of a blood donation request</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container verify-container">
+        <!-- Verification Form -->
+        <div class="card">
+            <div class="card-header">🛡️ Request Verification</div>
+            <p style="margin-bottom: 1rem; color: #666;">Enter the Request ID to verify its authenticity. Request IDs are provided on donation certificates and request notifications.</p>
+            
+            <div class="verify-form">
+                <input type="text" id="requestIdInput" placeholder="Enter Request ID (e.g., 507f1f77bcf86cd799439011)" />
+                <button class="btn btn-primary" onclick="verifyRequest()">Verify</button>
+            </div>
+
+            <!-- Result Display -->
+            <div id="resultArea"></div>
+
+            <!-- How it Works -->
+            <div class="how-it-works">
+                <h4>🤔 How does verification work?</h4>
+                <ol>
+                    <li><strong>Enter the Request ID</strong> from your certificate or notification</li>
+                    <li><strong>Our AI system</strong> checks the request against multiple fraud indicators</li>
+                    <li><strong>View the result</strong> showing request details and trust score</li>
+                    <li><strong>Flagged requests</strong> are reviewed by our admin team</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Back Link -->
+        <div style="text-align: center; margin-top: 1rem;">
+            <a href="index.html" class="btn btn-secondary">← Back to Home</a>
+            <a href="ai-transparency.html" class="btn btn-secondary" style="margin-left: 0.5rem;">🤖 View AI Metrics</a>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/theme.js"></script>
+    <script>
+        async function verifyRequest() {
+            const requestId = document.getElementById('requestIdInput').value.trim();
+            const resultArea = document.getElementById('resultArea');
+
+            if (!requestId) {
+                resultArea.innerHTML = `
+                    <div class="result-card not-found">
+                        <div class="verification-badge">
+                            <div class="icon">⚠️</div>
+                            <h3>Please enter a Request ID</h3>
+                            <p>The Request ID is typically 24 characters long</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            resultArea.innerHTML = `
+                <div class="result-card" style="background: #f8f9fa; text-align: center;">
+                    <p>🔄 Verifying request...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/public/verify?requestId=${encodeURIComponent(requestId)}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    resultArea.innerHTML = `
+                        <div class="result-card not-found">
+                            <div class="verification-badge">
+                                <div class="icon">❌</div>
+                                <h3>Request Not Found</h3>
+                                <p>${data.message || 'The provided Request ID does not exist in our system.'}</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const req = data.data;
+                const isFlagged = req.aiRiskFlag;
+                const cardClass = isFlagged ? 'flagged' : 'genuine';
+                const trustScore = req.aiScore !== null ? Math.round((1 - req.aiScore) * 100) : 'N/A';
+
+                let statusBadgeClass = 'status-pending';
+                if (req.status === 'completed') statusBadgeClass = 'status-completed';
+                else if (req.status === 'approved') statusBadgeClass = 'status-genuine';
+                else if (isFlagged) statusBadgeClass = 'status-flagged';
+
+                resultArea.innerHTML = `
+                    <div class="result-card ${cardClass}">
+                        <div class="verification-badge">
+                            <div class="icon">${isFlagged ? '⚠️' : '✅'}</div>
+                            <h3>${isFlagged ? 'Request Flagged for Review' : 'Verified Request'}</h3>
+                            <p>${isFlagged ? 'This request has been flagged by our AI for admin review.' : 'This request appears to be genuine.'}</p>
+                        </div>
+
+                        <div style="margin-top: 1.5rem;">
+                            <div class="result-item">
+                                <span>Request ID</span>
+                                <span style="font-family: monospace; font-size: 0.85rem;">${req.id}</span>
+                            </div>
+                            <div class="result-item">
+                                <span>Blood Group</span>
+                                <span><strong>${req.bloodGroup}</strong></span>
+                            </div>
+                            <div class="result-item">
+                                <span>Urgency</span>
+                                <span>${req.urgency || 'Normal'}</span>
+                            </div>
+                            <div class="result-item">
+                                <span>Status</span>
+                                <span class="status-badge ${statusBadgeClass}">${req.status}</span>
+                            </div>
+                            <div class="result-item">
+                                <span>Hospital</span>
+                                <span>${req.hospital || 'Not specified'}</span>
+                            </div>
+                            <div class="result-item">
+                                <span>Location</span>
+                                <span>${req.location || 'Not specified'}</span>
+                            </div>
+                            <div class="result-item">
+                                <span>Created</span>
+                                <span>${new Date(req.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            ${trustScore !== 'N/A' ? `
+                            <div class="result-item" style="flex-direction: column; align-items: stretch;">
+                                <span>Trust Score: <strong>${trustScore}%</strong></span>
+                                <div class="trust-meter">
+                                    <div class="trust-meter-fill" style="width: ${trustScore}%; background: ${trustScore > 70 ? '#28a745' : trustScore > 40 ? '#ffc107' : '#dc3545'};"></div>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Verification error:', error);
+                resultArea.innerHTML = `
+                    <div class="result-card not-found">
+                        <div class="verification-badge">
+                            <div class="icon">🔌</div>
+                            <h3>Connection Error</h3>
+                            <p>Unable to connect to the verification service. Please try again later.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('requestIdInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') verifyRequest();
+        });
+
+        // Check for requestId in URL params (for direct links from certificates)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRequestId = urlParams.get('id') || urlParams.get('requestId');
+        if (urlRequestId) {
+            document.getElementById('requestIdInput').value = urlRequestId;
+            verifyRequest();
+        }
+    </script>
+</body>
+</html>

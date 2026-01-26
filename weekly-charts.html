@@ -45,31 +45,54 @@
       <div id="alertContainer"></div>
 
       <div class="card">
-        <div class="card-header">Weekly Activity (Starter)</div>
-        <p>This page is ready for charts integration. Next we can connect `js/analytics.js` here.</p>
+        <div class="card-header">Weekly Activity</div>
+        <canvas id="weeklyChart" style="max-height:300px;"></canvas>
+        <p id="weeklyError" style="color:#dc3545;display:none;margin-top:0.5rem;"></p>
       </div>
 
       <div class="dashboard-grid">
         <div class="stat-card">
-          <h3>🩸</h3>
-          <p><strong>Donations</strong></p>
-          <p>Coming soon: weekly donation trend chart.</p>
+          <h3 id="wkDonations">--</h3>
+          <p><strong>Donations (7d)</strong></p>
         </div>
         <div class="stat-card">
-          <h3>📥</h3>
-          <p><strong>Requests</strong></p>
-          <p>Coming soon: requests created & resolved.</p>
-        </div>
-        <div class="stat-card">
-          <h3>⭐</h3>
-          <p><strong>Points</strong></p>
-          <p>Coming soon: points gained this week.</p>
+          <h3 id="wkRequests">--</h3>
+          <p><strong>Requests (7d)</strong></p>
         </div>
       </div>
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="js/common.js"></script>
   <script src="js/sidebar.js"></script>
+  <script>
+    (async function loadWeekly() {
+      try {
+        const res = await apiRequest('/api/auth/weekly');
+        if (!res.success) throw new Error('No data');
+
+        const { labels, donations, requests } = res.data;
+        document.getElementById('wkDonations').textContent = donations.reduce((a, b) => a + b, 0);
+        document.getElementById('wkRequests').textContent = requests.reduce((a, b) => a + b, 0);
+
+        const ctx = document.getElementById('weeklyChart');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Donations', data: donations, backgroundColor: '#dc3545' },
+              { label: 'Requests', data: requests, backgroundColor: '#007bff' }
+            ]
+          },
+          options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+      } catch (e) {
+        document.getElementById('weeklyError').textContent = 'Unable to load weekly data';
+        document.getElementById('weeklyError').style.display = 'block';
+      }
+    })();
+  </script>
 </body>
 </html>
