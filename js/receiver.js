@@ -7,9 +7,9 @@ if (!checkAuth()) {
 
 // Verify receiver role
 const userData = getUserData();
-if (userData.role !== 'receiver') {
-  alert('Access denied. This page is for receivers only.');
-  window.location.href = 'login.html';
+if (userData.role === 'admin') {
+  alert('Access denied. This page is for users only.');
+  window.location.replace('login.html');
 }
 
 // Load data on page load

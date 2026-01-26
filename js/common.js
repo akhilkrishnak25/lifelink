@@ -64,7 +64,8 @@ function showAlert(message, type = 'info') {
 function checkAuth() {
   const token = localStorage.getItem('token');
   if (!token) {
-    window.location.href = 'login.html';
+    // Use replace so Back button doesn't return to protected pages
+    window.location.replace('login.html');
     return false;
   }
   return true;
@@ -94,7 +95,7 @@ async function logout() {
       localStorage.removeItem('user');
       
       // Redirect to login
-      window.location.href = 'login.html';
+      window.location.replace('login.html');
     }
   }
 }

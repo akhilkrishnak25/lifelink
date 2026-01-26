@@ -9,9 +9,9 @@ if (!checkAuth()) {
 
 // Verify donor role
 const userData = getUserData();
-if (userData.role !== 'donor') {
-  alert('Access denied. This page is for donors only.');
-  window.location.href = 'login.html';
+if (userData.role === 'admin') {
+  alert('Access denied. This page is for users only.');
+  window.location.replace('login.html');
 }
 
 // Load donor data on page load

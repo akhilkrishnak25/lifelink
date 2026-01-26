@@ -26,8 +26,8 @@ exports.validateRegister = (req, res, next) => {
   }
 
   // Role validation
-  if (!role || !['donor', 'receiver', 'admin'].includes(role)) {
-    errors.push('Invalid role. Must be donor, receiver, or admin');
+  if (!role || !['user', 'admin'].includes(role)) {
+    errors.push('Invalid role. Must be user or admin');
   }
 
   if (errors.length > 0) {

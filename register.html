@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <script src="js/session.js"></script>
+    <script>
+        // If already logged in, go directly to home
+        Session.redirectIfLoggedIn();
+    </script>
     <div class="header">
         <div class="container">
             <h1>🩸 LifeLink</h1>
@@ -46,12 +51,12 @@
                     <label class="form-label">I am a</label>
                     <select id="role" class="form-select" required>
                         <option value="">Select your role</option>
-                        <option value="donor">Blood Donor</option>
-                        <option value="receiver">Blood Receiver</option>
+                        <option value="user">User (Donor + Receiver)</option>
+                        <option value="admin">Admin</option>
                     </select>
                 </div>
 
-                <!-- Donor-specific fields (shown only when donor is selected) -->
+                <!-- Optional donor profile fields (available for User accounts) -->
                 <div id="donorFields" class="hidden">
                     <div class="card-header" style="margin-top: 1.5rem;">Donor Profile</div>
                     
@@ -129,17 +134,17 @@
         // Show/hide donor fields based on role selection
         document.getElementById('role').addEventListener('change', function() {
             const donorFields = document.getElementById('donorFields');
-            if (this.value === 'donor') {
+            if (this.value === 'user') {
                 donorFields.classList.remove('hidden');
-                // Make donor fields required
-                document.getElementById('bloodGroup').required = true;
-                document.getElementById('ageGroup').required = true;
-                document.getElementById('address').required = true;
-                document.getElementById('city').required = true;
-                document.getElementById('state').required = true;
-                document.getElementById('pincode').required = true;
-                document.getElementById('latitude').required = true;
-                document.getElementById('longitude').required = true;
+                // Donor fields are optional at registration (user can donate later)
+                document.getElementById('bloodGroup').required = false;
+                document.getElementById('ageGroup').required = false;
+                document.getElementById('address').required = false;
+                document.getElementById('city').required = false;
+                document.getElementById('state').required = false;
+                document.getElementById('pincode').required = false;
+                document.getElementById('latitude').required = false;
+                document.getElementById('longitude').required = false;
             } else {
                 donorFields.classList.add('hidden');
                 // Remove required from donor fields

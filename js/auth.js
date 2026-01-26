@@ -41,15 +41,13 @@ async function handleLogin(event) {
       // Redirect based on role
       setTimeout(() => {
         const role = response.data.user.role;
-        if (role === 'donor') {
-          window.location.href = 'donor-dashboard.html';
-        } else if (role === 'receiver') {
-          window.location.href = 'receiver-dashboard.html';
-        } else if (role === 'admin') {
-          window.location.href = 'admin-dashboard.html';
-        } else {
-          window.location.href = 'index.html';
+        if (role === 'admin') {
+          window.location.replace('admin-dashboard.html');
+          return;
         }
+
+        // For normal users: go to the Home hub with sidebar
+        window.location.replace('home.html');
       }, 1000);
     }
   } catch (error) {
@@ -108,68 +106,68 @@ async function handleRegister(event) {
     role
   };
 
-  // If role is donor, include donor data
-  if (role === 'donor') {
-    const bloodGroup = document.getElementById('bloodGroup').value;
-    const ageGroup = document.getElementById('ageGroup').value;
-    const address = document.getElementById('address').value.trim();
-    const city = document.getElementById('city').value.trim();
-    const state = document.getElementById('state').value.trim();
-    const pincode = document.getElementById('pincode').value.trim();
-    const latitude = parseFloat(document.getElementById('latitude').value);
-    const longitude = parseFloat(document.getElementById('longitude').value);
+  // Optional donor profile data (for user accounts)
+  if (role === 'user') {
+    const bloodGroup = (document.getElementById('bloodGroup')?.value || '').trim();
+    const ageGroup = (document.getElementById('ageGroup')?.value || '').trim();
+    const address = (document.getElementById('address')?.value || '').trim();
+    const city = (document.getElementById('city')?.value || '').trim();
+    const state = (document.getElementById('state')?.value || '').trim();
+    const pincode = (document.getElementById('pincode')?.value || '').trim();
+    const latRaw = (document.getElementById('latitude')?.value || '').trim();
+    const lonRaw = (document.getElementById('longitude')?.value || '').trim();
+    const latitude = latRaw ? parseFloat(latRaw) : null;
+    const longitude = lonRaw ? parseFloat(lonRaw) : null;
 
-    // Validate donor fields
-    if (!bloodGroup) {
-      showAlert('Please select blood group', 'danger');
-      return;
+    const anyDonorFieldFilled =
+      !!bloodGroup || !!ageGroup || !!address || !!city || !!state || !!pincode || latRaw.length > 0 || lonRaw.length > 0;
+
+    if (anyDonorFieldFilled) {
+      // Light validation only if user started filling donor profile
+      if (!bloodGroup) {
+        showAlert('Please select blood group (or clear donor fields).', 'danger');
+        return;
+      }
+      if (!ageGroup) {
+        showAlert('Please select age group (or clear donor fields).', 'danger');
+        return;
+      }
+      if (!address || address.length < 5) {
+        showAlert('Please enter a valid address (or clear donor fields).', 'danger');
+        return;
+      }
+      if (!city || city.length < 2) {
+        showAlert('Please enter city (or clear donor fields).', 'danger');
+        return;
+      }
+      if (!state || state.length < 2) {
+        showAlert('Please enter state (or clear donor fields).', 'danger');
+        return;
+      }
+      if (!isValidPincode(pincode)) {
+        showAlert('Please enter a valid 6-digit pincode (or clear donor fields).', 'danger');
+        return;
+      }
+      if (latitude === null || isNaN(latitude) || latitude < -90 || latitude > 90) {
+        showAlert('Please enter a valid latitude (or clear donor fields).', 'danger');
+        return;
+      }
+      if (longitude === null || isNaN(longitude) || longitude < -180 || longitude > 180) {
+        showAlert('Please enter a valid longitude (or clear donor fields).', 'danger');
+        return;
+      }
+
+      requestData.donorData = {
+        bloodGroup,
+        ageGroup,
+        address,
+        city,
+        state,
+        pincode,
+        latitude,
+        longitude
+      };
     }
-
-    if (!ageGroup) {
-      showAlert('Please select age group', 'danger');
-      return;
-    }
-
-    if (!address || address.length < 5) {
-      showAlert('Please enter a valid address', 'danger');
-      return;
-    }
-
-    if (!city || city.length < 2) {
-      showAlert('Please enter city', 'danger');
-      return;
-    }
-
-    if (!state || state.length < 2) {
-      showAlert('Please enter state', 'danger');
-      return;
-    }
-
-    if (!isValidPincode(pincode)) {
-      showAlert('Please enter a valid 6-digit pincode', 'danger');
-      return;
-    }
-
-    if (isNaN(latitude) || latitude < -90 || latitude > 90) {
-      showAlert('Please enter a valid latitude', 'danger');
-      return;
-    }
-
-    if (isNaN(longitude) || longitude < -180 || longitude > 180) {
-      showAlert('Please enter a valid longitude', 'danger');
-      return;
-    }
-
-    requestData.donorData = {
-      bloodGroup,
-      ageGroup,
-      address,
-      city,
-      state,
-      pincode,
-      latitude,
-      longitude
-    };
   }
 
   try {
@@ -189,13 +187,13 @@ async function handleRegister(event) {
 
       // Redirect based on role
       setTimeout(() => {
-        if (role === 'donor') {
-          window.location.href = 'donor-dashboard.html';
-        } else if (role === 'receiver') {
-          window.location.href = 'receiver-dashboard.html';
-        } else {
-          window.location.href = 'index.html';
+        if (role === 'admin') {
+          window.location.replace('admin-dashboard.html');
+          return;
         }
+
+        // For normal users: go to the Home hub with sidebar
+        window.location.replace('home.html');
       }, 1000);
     }
   } catch (error) {

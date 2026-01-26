@@ -27,8 +27,10 @@ exports.createAppointment = async (appointmentData) => {
  * Get appointments for user
  */
 exports.getAppointments = async (userId, role) => {
-  const query = role === 'donor' 
-    ? { donorId: userId }
+  // With unified 'user' role, default to receiver-side appointments.
+  // Donor-side retrieval can be supported by passing a donorId filter in future.
+  const query = role === 'admin'
+    ? {}
     : { receiverId: userId };
   
   return await Appointment.find(query)
@@ -91,8 +93,8 @@ exports.sendReminder = async (io, appointmentId) => {
  * Get upcoming appointments
  */
 exports.getUpcoming = async (userId, role) => {
-  const query = role === 'donor' 
-    ? { donorId: userId, status: { $in: ['scheduled', 'confirmed'] } }
+  const query = role === 'admin'
+    ? { status: { $in: ['scheduled', 'confirmed'] } }
     : { receiverId: userId, status: { $in: ['scheduled', 'confirmed'] } };
   
   return await Appointment.find(query)

@@ -12,7 +12,9 @@ router.post('/', protect, async (req, res) => {
   try {
     const appointment = await appointmentService.createAppointment({
       ...req.body,
-      donorId: req.user.role === 'donor' ? req.user.id : req.body.donorId
+      // Unified role: user can create appointment; donorId must be provided explicitly
+      donorId: req.body.donorId,
+      receiverId: req.user.id
     });
     
     res.status(201).json({ success: true, data: appointment });

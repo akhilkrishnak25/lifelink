@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home - LifeLink</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dark-mode.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#dc3545" />
+</head>
+<body>
+  <script src="js/session.js"></script>
+  <script>
+    // Keep login even on back/forward navigation
+    Session.requireAuth();
+  </script>
+
+  <div class="mobile-topbar">
+    <button class="menu-btn" id="sidebarToggle">☰ Menu</button>
+    <div style="font-weight: 800;">🩸 LifeLink</div>
+    <button class="btn btn-secondary" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">🩸 LifeLink</div>
+
+      <div class="user">
+        <div class="name" id="sidebarUserName">User</div>
+        <div class="meta" id="sidebarUserMeta"></div>
+      </div>
+
+      <div class="section">Navigation</div>
+      <nav>
+        <a class="nav-item" href="home.html">🏠 Home</a>
+        <a class="nav-item" href="profile.html">👤 Profile</a>
+        <a class="nav-item" href="weekly-charts.html">📊 Weekly Charts</a>
+        <a class="nav-item" href="gamification.html">🎮 Gamification</a>
+        <a class="nav-item" href="donor-dashboard.html">🩸 Donor View</a>
+        <a class="nav-item" href="receiver-dashboard.html">📥 Receiver View</a>
+        <a class="nav-item" href="precautions.html">🧾 Donor Precautions</a>
+      </nav>
+
+      <div class="section">Account</div>
+      <button class="nav-item" onclick="logout()">🚪 Logout</button>
+    </aside>
+
+    <main class="content">
+      <div id="alertContainer"></div>
+
+      <div class="card">
+        <div class="card-header">Welcome to LifeLink</div>
+        <p>This is your home hub. Use the left menu to navigate.</p>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="stat-card">
+          <h3>👤</h3>
+          <p><strong>Profile</strong></p>
+          <p>Manage your details and preferences.</p>
+        </div>
+        <div class="stat-card">
+          <h3>📊</h3>
+          <p><strong>Weekly Charts</strong></p>
+          <p>View your weekly activity and stats.</p>
+        </div>
+        <div class="stat-card">
+          <h3>🎮</h3>
+          <p><strong>Gamification</strong></p>
+          <p>Points, badges, achievements and leaderboard.</p>
+        </div>
+        <div class="stat-card">
+          <h3>🩸</h3>
+          <p><strong>Donor / Receiver</strong></p>
+          <p>Switch between donor and receiver anytime.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/pwa.js"></script>
+  <script src="js/sidebar.js"></script>
+</body>
+</html>

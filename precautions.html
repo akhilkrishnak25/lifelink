@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Donor Precautions - LifeLink</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dark-mode.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+</head>
+<body>
+  <script src="js/session.js"></script>
+  <script>Session.requireAuth();</script>
+
+  <div class="mobile-topbar">
+    <button class="menu-btn" id="sidebarToggle">☰ Menu</button>
+    <div style="font-weight: 800;">🧾 Donor Precautions</div>
+    <button class="btn btn-secondary" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">🩸 LifeLink</div>
+      <div class="user">
+        <div class="name" id="sidebarUserName">User</div>
+        <div class="meta" id="sidebarUserMeta"></div>
+      </div>
+      <div class="section">Navigation</div>
+      <nav>
+        <a class="nav-item" href="home.html">🏠 Home</a>
+        <a class="nav-item" href="profile.html">👤 Profile</a>
+        <a class="nav-item" href="weekly-charts.html">📊 Weekly Charts</a>
+        <a class="nav-item" href="gamification.html">🎮 Gamification</a>
+        <a class="nav-item" href="donor-dashboard.html">🩸 Donor View</a>
+        <a class="nav-item" href="receiver-dashboard.html">📥 Receiver View</a>
+        <a class="nav-item" href="precautions.html">🧾 Donor Precautions</a>
+      </nav>
+      <div class="section">Account</div>
+      <button class="nav-item" onclick="logout()">🚪 Logout</button>
+    </aside>
+
+    <main class="content">
+      <div class="card">
+        <div class="card-header">Precautions Before Donating Blood</div>
+        <p style="opacity:.85">These are general guidelines. Always follow the advice of medical professionals.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">✅ Before Donation</div>
+        <ul style="line-height: 1.9; margin-left: 1.2rem;">
+          <li>Sleep well (at least 7-8 hours) the night before.</li>
+          <li>Eat a healthy meal 2-3 hours before donating.</li>
+          <li>Drink plenty of water (stay hydrated).</li>
+          <li>Avoid alcohol for 24 hours before donation.</li>
+          <li>Avoid fatty foods (can affect blood tests).</li>
+          <li>Carry a valid ID proof.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">⛔ Who Should Not Donate (Temporary)</div>
+        <ul style="line-height: 1.9; margin-left: 1.2rem;">
+          <li>If you have fever, cold, flu, or any infection.</li>
+          <li>If you had a tattoo/piercing in the last 6 months (varies by region).</li>
+          <li>If you had major surgery recently.</li>
+          <li>If you are taking antibiotics (ask doctor).</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">🩹 After Donation</div>
+        <ul style="line-height: 1.9; margin-left: 1.2rem;">
+          <li>Keep the bandage on for at least 2-4 hours.</li>
+          <li>Drink extra fluids for the next 24 hours.</li>
+          <li>Avoid heavy exercise and lifting for 24 hours.</li>
+          <li>If you feel dizzy, sit/lie down, and inform staff.</li>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/sidebar.js"></script>
+</body>
+</html>

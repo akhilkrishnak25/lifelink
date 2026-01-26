@@ -38,8 +38,8 @@ exports.register = async (req, res) => {
       role
     });
 
-    // If role is donor, create donor profile
-    if (role === 'donor' && donorData) {
+    // If donor profile data was provided, create donor profile (for user accounts)
+    if (role === 'user' && donorData) {
       await Donor.create({
         userId: user._id,
         bloodGroup: donorData.bloodGroup,
@@ -148,8 +148,8 @@ exports.getMe = async (req, res) => {
 
     let profile = user.getPublicProfile();
 
-    // If user is donor, include donor details
-    if (user.role === 'donor') {
+    // If a donor profile exists, include donor details
+    if (user.role === 'user') {
       const donor = await Donor.findOne({ userId: user._id });
       profile.donorProfile = donor;
     }
