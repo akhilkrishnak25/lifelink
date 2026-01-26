@@ -14,7 +14,8 @@ const {
 
 // All routes are protected and donor-only
 router.use(protect);
-router.use(authorize('donor'));
+// Unified role model: normal users can act as donors once they create a donor profile.
+router.use(authorize('user', 'admin'));
 
 router.get('/profile', getProfile);
 router.post('/profile', validateDonorProfile, createOrUpdateProfile);

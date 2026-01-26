@@ -16,7 +16,8 @@
   }
 
   function isLoggedIn() {
-    return !!getToken();
+    // Guard against stale token-only state causing false "logged in" redirects
+    return !!getToken() && !!getUser();
   }
 
   function requireAuth() {

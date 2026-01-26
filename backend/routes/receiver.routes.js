@@ -15,7 +15,8 @@ const {
 
 // All routes are protected and receiver-only
 router.use(protect);
-router.use(authorize('receiver'));
+// Unified role model: normal users can create/track requests (receiver mode).
+router.use(authorize('user', 'admin'));
 
 router.post('/request', validateBloodRequest, createRequest);
 router.get('/my-requests', getMyRequests);

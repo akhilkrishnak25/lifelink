@@ -33,8 +33,12 @@ async function handleLogin(event) {
 
     if (response.success) {
       // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      if (window.Session && typeof Session.setSession === 'function') {
+        Session.setSession(response.data.token, response.data.user);
+      } else {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
 
       showAlert('Login successful! Redirecting...', 'success');
 
@@ -180,8 +184,12 @@ async function handleRegister(event) {
 
     if (response.success) {
       // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      if (window.Session && typeof Session.setSession === 'function') {
+        Session.setSession(response.data.token, response.data.user);
+      } else {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
 
       showAlert('Registration successful! Redirecting...', 'success');
 
