@@ -152,10 +152,19 @@ function hideCreateRequestForm() {
 }
 
 /**
- * Set up location button
+ * Set up location button with improved error handling
  */
 function setupLocationButton() {
-  document.getElementById('getLocationBtn').addEventListener('click', function() {
+  const btn = document.getElementById('getLocationBtn');
+  if (!btn) return;
+  
+  btn.addEventListener('click', function() {
+    // Check if running on HTTPS (required for geolocation)
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      showAlert('Geolocation requires HTTPS. Please enter location manually or use a secure connection.', 'warning');
+      return;
+    }
+    
     if (navigator.geolocation) {
       this.textContent = '📍 Getting location...';
       this.disabled = true;
@@ -165,19 +174,35 @@ function setupLocationButton() {
           document.getElementById('latitude').value = position.coords.latitude.toFixed(6);
           document.getElementById('longitude').value = position.coords.longitude.toFixed(6);
           this.textContent = '✓ Location obtained';
+          showAlert('Location captured successfully!', 'success');
           setTimeout(() => {
             this.textContent = '📍 Get My Location';
             this.disabled = false;
           }, 2000);
         },
         (error) => {
-          showAlert('Unable to get location. Please enter manually.', 'danger');
+          let errorMsg = 'Unable to get location. ';
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMsg += 'Please allow location access in your browser settings.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMsg += 'Location information unavailable.';
+              break;
+            case error.TIMEOUT:
+              errorMsg += 'Location request timed out.';
+              break;
+            default:
+              errorMsg += 'Please enter manually.';
+          }
+          showAlert(errorMsg, 'danger');
           this.textContent = '📍 Get My Location';
           this.disabled = false;
-        }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
       );
     } else {
-      showAlert('Geolocation is not supported by your browser', 'danger');
+      showAlert('Geolocation is not supported by your browser. Please enter coordinates manually.', 'danger');
     }
   });
 }

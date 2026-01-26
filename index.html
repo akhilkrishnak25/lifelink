@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LifeLink - Emergency blood donor finder platform connecting donors with recipients in need">
+    <meta name="keywords" content="blood donation, blood donor, emergency blood, blood request">
     <title>LifeLink - Blood Donor Finder</title>
     
     <!-- PWA Manifest -->
@@ -14,28 +16,30 @@
     <link rel="stylesheet" href="css/dark-mode.css">
 </head>
 <body>
+    <!-- Skip to main content link for accessibility -->
+    <a href="#mainContent" class="skip-link" style="position: absolute; top: -40px; left: 0; background: #dc3545; color: white; padding: 8px 16px; z-index: 9999; transition: top 0.3s;" onfocus="this.style.top='0'" onblur="this.style.top='-40px'">Skip to main content</a>
     <!-- Theme Toggle -->
-    <button id="themeToggle" style="position: fixed; top: 1rem; right: 1rem; z-index: 1000; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; background: var(--bg-card, #fff); box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">
+    <button id="themeToggle" aria-label="Toggle dark mode" style="position: fixed; top: 1rem; right: 1rem; z-index: 1000; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; background: var(--bg-card, #fff); box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">
         🌙 Dark Mode
     </button>
 
     <!-- Header -->
-    <div class="header">
+    <header class="header" role="banner">
         <div class="container">
-            <h1>🩸 LifeLink v2.0</h1>
-            <p>Connecting Blood Donors with Those in Need - Now with 20 FREE Features!</p>
+            <h1>🩸 LifeLink</h1>
+            <p>Emergency Blood Donor Finder Platform</p>
         </div>
-    </div>
+    </header>
 
     <!-- Main Content -->
-    <div class="container" style="margin-top: 2rem;">
+    <main id="mainContent" class="container" style="margin-top: 2rem;" role="main">
         <!-- Welcome Card -->
         <div class="card">
-            <div class="card-header">Welcome to LifeLink v2.0 🎉</div>
-            <p>LifeLink is a production-ready web application that helps connect blood donors with receivers during emergencies. Now featuring real-time notifications, gamification, chat, analytics, and much more - all completely FREE!</p>
+            <div class="card-header">Welcome to LifeLink 🎉</div>
+            <p>LifeLink is a web application that helps connect blood donors with receivers during emergencies. Features include user authentication, blood request management, donor registration, AI-powered fraud detection, and admin controls.</p>
             <div id="installPrompt" style="margin-top: 1rem; padding: 1rem; background: #e7f3ff; border-radius: 0.5rem; display: none;">
-                <strong>📱 Install as App:</strong> Add LifeLink to your home screen for offline access and push notifications!
-                <button id="installBtn" class="btn btn-primary" style="margin-top: 0.5rem;">Install Now</button>
+                <strong>📱 Install as App:</strong> Add LifeLink to your home screen for quick access!
+                <button id="installBtn" class="btn btn-primary" style="margin-top: 0.5rem;" aria-label="Install LifeLink as an app">Install Now</button>
             </div>
         </div>
 
@@ -67,68 +71,68 @@
             <p id="statsError" style="color:#dc3545;display:none;margin-top:0.5rem;"></p>
         </div>
 
-        <!-- New Features Highlight -->
+        <!-- Current Features -->
         <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-            <div class="card-header" style="color: white; border-bottom: 1px solid rgba(255,255,255,0.2);">🆕 New in Version 2.0</div>
+            <div class="card-header" style="color: white; border-bottom: 1px solid rgba(255,255,255,0.2);">✅ Working Features</div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
                 <div>
-                    <strong>🔔 Real-time Notifications</strong>
-                    <p style="font-size: 0.9rem; opacity: 0.9;">Instant alerts via Socket.io</p>
+                    <strong>🔐 User Authentication</strong>
+                    <p style="font-size: 0.9rem; opacity: 0.9;">Secure login & registration with JWT</p>
                 </div>
                 <div>
-                    <strong>📱 Progressive Web App</strong>
-                    <p style="font-size: 0.9rem; opacity: 0.9;">Install & use offline</p>
+                    <strong>🩸 Blood Request System</strong>
+                    <p style="font-size: 0.9rem; opacity: 0.9;">Create & manage emergency requests</p>
                 </div>
                 <div>
-                    <strong>🎮 Gamification</strong>
-                    <p style="font-size: 0.9rem; opacity: 0.9;">Points, badges & leaderboards</p>
+                    <strong>👤 Donor Profiles</strong>
+                    <p style="font-size: 0.9rem; opacity: 0.9;">Register with blood group & location</p>
                 </div>
                 <div>
-                    <strong>💬 In-App Chat</strong>
-                    <p style="font-size: 0.9rem; opacity: 0.9;">Direct messaging with donors</p>
+                    <strong>🤖 AI Fraud Detection</strong>
+                    <p style="font-size: 0.9rem; opacity: 0.9;">ML model flags suspicious requests</p>
                 </div>
                 <div>
-                    <strong>📊 Analytics Dashboard</strong>
-                    <p style="font-size: 0.9rem; opacity: 0.9;">Visualize donation trends</p>
+                    <strong>📊 Live Statistics</strong>
+                    <p style="font-size: 0.9rem; opacity: 0.9;">Real-time system metrics above</p>
                 </div>
                 <div>
                     <strong>🌙 Dark Mode</strong>
-                    <p style="font-size: 0.9rem; opacity: 0.9;">Easy on the eyes</p>
+                    <p style="font-size: 0.9rem; opacity: 0.9;">Toggle theme in top-right corner</p>
                 </div>
             </div>
         </div>
 
         <!-- Features Grid -->
-        <div class="dashboard-grid">
-            <div class="stat-card">
-                <h3>🩸</h3>
-                <p><strong>Smart Matching</strong></p>
-                <p>AI-powered donor matching based on distance, reliability & compatibility</p>
+        <div class="dashboard-grid" role="list" aria-label="Platform features">
+            <div class="stat-card" role="listitem">
+                <h3 aria-hidden="true">🩸</h3>
+                <p><strong>Donor Registration</strong></p>
+                <p>Register with blood group, location & availability status</p>
             </div>
-            <div class="stat-card">
-                <h3>📱</h3>
+            <div class="stat-card" role="listitem">
+                <h3 aria-hidden="true">📱</h3>
                 <p><strong>Emergency Requests</strong></p>
-                <p>Create urgent requests with real-time notifications to nearby donors</p>
+                <p>Create blood requests with hospital & patient details</p>
             </div>
-            <div class="stat-card">
-                <h3>🤖</h3>
-                <p><strong>Enhanced ML Detection</strong></p>
-                <p>8-feature model detects fake requests with 95% accuracy</p>
+            <div class="stat-card" role="listitem">
+                <h3 aria-hidden="true">🤖</h3>
+                <p><strong>ML Fraud Detection</strong></p>
+                <p>8-feature Random Forest model analyzes request patterns</p>
             </div>
-            <div class="stat-card">
-                <h3>⭐</h3>
-                <p><strong>Rating System</strong></p>
-                <p>5-star ratings and reviews build trust in the community</p>
+            <div class="stat-card" role="listitem">
+                <h3 aria-hidden="true">🔍</h3>
+                <p><strong>Request Verification</strong></p>
+                <p>Public verification page to check request authenticity</p>
             </div>
-            <div class="stat-card">
-                <h3>📅</h3>
-                <p><strong>Appointments</strong></p>
-                <p>Schedule donations with QR codes for easy check-in</p>
+            <div class="stat-card" role="listitem">
+                <h3 aria-hidden="true">👨‍💼</h3>
+                <p><strong>Admin Dashboard</strong></p>
+                <p>Review flagged requests & manage users</p>
             </div>
-            <div class="stat-card">
-                <h3>🏕️</h3>
-                <p><strong>Blood Camps</strong></p>
-                <p>Organize and join community blood donation events</p>
+            <div class="stat-card" role="listitem">
+                <h3 aria-hidden="true">📍</h3>
+                <p><strong>Geolocation</strong></p>
+                <p>Auto-detect location for nearby donor matching</p>
             </div>
         </div>
 
@@ -234,18 +238,18 @@
                 </table>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Footer -->
-    <div class="footer">
+    <footer class="footer" role="contentinfo">
         <div class="container">
             <p>&copy; 2026 LifeLink v2.0 - Saving Lives Together</p>
             <p style="font-size: 0.875rem; margin-top: 0.5rem;">
                 Emergency Blood Donor Finder Platform | 
-                <a href="https://github.com/akhilkrishnak25/lifelink" style="color: inherit; text-decoration: underline;">Open Source on GitHub</a>
+                <a href="https://github.com/akhilkrishnak25/lifelink" style="color: inherit; text-decoration: underline;" aria-label="View source code on GitHub">Open Source on GitHub</a>
             </p>
         </div>
-    </div>
+    </footer>
 
     <!-- Scripts -->
     <script src="js/common.js"></script>
