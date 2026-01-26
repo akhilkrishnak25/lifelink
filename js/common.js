@@ -24,16 +24,30 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
   }
 
   try {
+    console.log(`[API] ${method} ${endpoint}`, data ? data : '');
     const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
     const result = await response.json();
+    console.log(`[API] Response:`, result);
 
     if (!response.ok) {
+      // Handle specific error codes
+      if (response.status === 500) {
+        throw new Error('Server error. The database may be temporarily unavailable. Please try again later.');
+      } else if (response.status === 401) {
+        throw new Error(result.message || 'Invalid credentials. Please check your email and password.');
+      } else if (response.status === 400) {
+        throw new Error(result.message || 'Invalid request. Please check your input.');
+      }
       throw new Error(result.message || 'Request failed');
     }
 
     return result;
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('[API] Error:', error);
+    // Check for network errors
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Unable to connect to server. Please check your internet connection.');
+    }
     throw error;
   }
 }
@@ -42,19 +56,24 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
  * Show alert message
  */
 function showAlert(message, type = 'info') {
+  console.log(`[Alert] ${type}: ${message}`);
   const alertContainer = document.getElementById('alertContainer');
-  if (!alertContainer) return;
+  if (!alertContainer) {
+    console.warn('[Alert] alertContainer element not found, using browser alert');
+    alert(message);
+    return;
+  }
 
-  const alert = document.createElement('div');
-  alert.className = `alert alert-${type}`;
-  alert.textContent = message;
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert alert-${type}`;
+  alertDiv.textContent = message;
 
   alertContainer.innerHTML = '';
-  alertContainer.appendChild(alert);
+  alertContainer.appendChild(alertDiv);
 
   // Auto-dismiss after 5 seconds
   setTimeout(() => {
-    alert.remove();
+    alertDiv.remove();
   }, 5000);
 }
 
@@ -85,14 +104,18 @@ function getUserData() {
 async function logout() {
   if (confirm('Are you sure you want to logout?')) {
     try {
-      // Call logout API (optional)
+      // Call logout API (optional - may fail if backend is down)
       await apiRequest('/api/auth/logout', 'POST');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout API error (continuing with local logout):', error);
     } finally {
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Clear session using Session manager if available, otherwise clear localStorage directly
+      if (window.Session && typeof Session.clearSession === 'function') {
+        Session.clearSession();
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
       
       // Redirect to login
       window.location.replace('login.html');
