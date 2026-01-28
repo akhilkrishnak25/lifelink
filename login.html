@@ -9,10 +9,6 @@
 </head>
 <body>
     <script src="js/session.js"></script>
-    <script>
-        // If already logged in, go directly to home
-        Session.redirectIfLoggedIn();
-    </script>
     
     <!-- Skip to main content -->
     <a href="#loginForm" class="skip-link" style="position: absolute; top: -40px; left: 0; background: #dc3545; color: white; padding: 8px 16px; z-index: 9999; transition: top 0.3s;" onfocus="this.style.top='0'" onblur="this.style.top='-40px'">Skip to login form</a>
@@ -28,8 +24,19 @@
         <!-- Alert Messages -->
         <div id="alertContainer" role="alert" aria-live="polite"></div>
 
+        <!-- Already Logged In Banner -->
+        <div id="alreadyLoggedIn" class="card" style="display: none; background: #fff3cd; border: 1px solid #ffc107;">
+            <div style="text-align: center;">
+                <p style="margin-bottom: 1rem;">⚠️ You are already logged in as <strong id="currentUserName"></strong></p>
+                <div style="display: grid; gap: 0.5rem;">
+                    <a href="home.html" class="btn btn-primary btn-block">Go to Dashboard</a>
+                    <button onclick="switchAccount()" class="btn btn-secondary btn-block">Switch Account (Logout)</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Login Form -->
-        <div class="card">
+        <div id="loginFormCard" class="card">
             <div class="card-header">Login</div>
             <form id="loginForm" aria-label="Login form">
                 <div class="form-group">
@@ -79,6 +86,34 @@
     <script src="js/common.js"></script>
     <script src="js/auth.js"></script>
     <script>
+        // Check if already logged in
+        (function checkExistingSession() {
+            const token = localStorage.getItem('token');
+            const userRaw = localStorage.getItem('user');
+            
+            if (token && userRaw) {
+                try {
+                    const user = JSON.parse(userRaw);
+                    document.getElementById('alreadyLoggedIn').style.display = 'block';
+                    document.getElementById('loginFormCard').style.display = 'none';
+                    document.getElementById('currentUserName').textContent = user.name || user.email || 'User';
+                } catch (e) {
+                    // Invalid session data, clear it
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                }
+            }
+        })();
+        
+        // Switch account - logout and show login form
+        function switchAccount() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.getElementById('alreadyLoggedIn').style.display = 'none';
+            document.getElementById('loginFormCard').style.display = 'block';
+            showAlert('Logged out successfully. Please login with a different account.', 'success');
+        }
+        
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
     </script>
 </body>

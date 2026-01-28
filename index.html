@@ -139,9 +139,22 @@
         <!-- Action Buttons -->
         <div class="card" style="margin-top: 2rem;">
             <div class="card-header">Get Started</div>
-            <div style="display: grid; gap: 1rem;">
+            
+            <!-- Show when NOT logged in -->
+            <div id="guestActions" style="display: grid; gap: 1rem;">
                 <a href="login.html" class="btn btn-primary btn-block">Login to Your Account</a>
                 <a href="register.html" class="btn btn-success btn-block">Create New Account</a>
+            </div>
+            
+            <!-- Show when logged in -->
+            <div id="userActions" style="display: none;">
+                <p style="margin-bottom: 1rem; padding: 1rem; background: #d4edda; border-radius: 8px; color: #155724;">
+                    ✅ You are logged in as <strong id="loggedInUser"></strong>
+                </p>
+                <div style="display: grid; gap: 1rem;">
+                    <a href="home.html" class="btn btn-primary btn-block">Go to Dashboard</a>
+                    <button onclick="handleLogout()" class="btn btn-secondary btn-block">Logout & Switch Account</button>
+                </div>
             </div>
         </div>
 
@@ -256,6 +269,34 @@
     <script src="js/theme.js"></script>
     <script src="js/pwa.js"></script>
     <script>
+        // Check if user is logged in and update UI accordingly
+        (function checkLoginStatus() {
+            const token = localStorage.getItem('token');
+            const userRaw = localStorage.getItem('user');
+            
+            if (token && userRaw) {
+                try {
+                    const user = JSON.parse(userRaw);
+                    // User is logged in - show user actions
+                    document.getElementById('guestActions').style.display = 'none';
+                    document.getElementById('userActions').style.display = 'block';
+                    document.getElementById('loggedInUser').textContent = user.name || user.email || 'User';
+                } catch (e) {
+                    // Invalid user data - clear and show guest actions
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                }
+            }
+        })();
+        
+        // Logout handler
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            alert('Logged out successfully! You can now login with a different account.');
+            window.location.reload();
+        }
+        
         // Fetch live stats from backend
         (async function loadStats() {
             try {
