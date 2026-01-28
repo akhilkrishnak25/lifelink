@@ -1,6 +1,9 @@
 // Common JavaScript utilities and API functions
 
-const API_BASE_URL = 'https://lifelink-dmvb.onrender.com';
+// Use localhost for local development, Render URL for production
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:5000' 
+  : 'https://lifelink-dmvb.onrender.com';
 
 /**
  * Make API request with authentication
