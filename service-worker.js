@@ -1,12 +1,5 @@
 const CACHE_NAME = 'lifelink-v1.0.0';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/login.html',
-  '/register.html',
-  '/donor-dashboard.html',
-  '/receiver-dashboard.html',
-  '/admin-dashboard.html',
   '/css/style.css',
   '/js/auth.js',
   '/js/common.js',
@@ -27,6 +20,13 @@ self.addEventListener('install', event => {
 
 // Fetch from cache
 self.addEventListener('fetch', event => {
+  // Avoid caching navigation requests (HTML pages). This prevents stale/buggy
+  // cached pages from making navigation links (Login/Register) look broken.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {

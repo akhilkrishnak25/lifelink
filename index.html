@@ -349,17 +349,29 @@
         
         updateThemeButton();
 
-        // Initialize PWA manager
-        const pwaManager = new PWAManager();
-        
-        // Show install prompt if available
-        pwaManager.onInstallPromptAvailable(() => {
-            document.getElementById('installPrompt').style.display = 'block';
-        });
-        
-        document.getElementById('installBtn')?.addEventListener('click', () => {
-            pwaManager.promptInstall();
-        });
+        // PWA Manager is initialized in js/pwa.js. If you want a custom
+        // install UX, wire it to the existing PWAManager implementation.
+        (function wireInstallPromptFallback() {
+            const installPrompt = document.getElementById('installPrompt');
+            const installBtn = document.getElementById('installBtn');
+            if (!installPrompt || !installBtn) return;
+
+            // Show existing prompt when browser fires beforeinstallprompt
+            window.addEventListener('beforeinstallprompt', () => {
+                installPrompt.style.display = 'block';
+            });
+
+            installBtn.addEventListener('click', async () => {
+                try {
+                    // Use the global instance created in js/pwa.js
+                    if (window.pwaManager && typeof window.pwaManager.installPWA === 'function') {
+                        await window.pwaManager.installPWA();
+                    }
+                } catch (e) {
+                    console.error('Install prompt failed:', e);
+                }
+            });
+        })();
     </script>
 </body>
 </html>

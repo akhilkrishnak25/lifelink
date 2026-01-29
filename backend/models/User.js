@@ -30,7 +30,9 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['donor', 'receiver', 'admin'],
+    // App v2 uses a unified "user" role for normal accounts.
+    // Keep legacy roles for backward compatibility with older pages.
+    enum: ['user', 'donor', 'receiver', 'admin'],
     required: [true, 'Role is required']
   },
   isActive: {

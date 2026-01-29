@@ -139,7 +139,8 @@ exports.getNearbyRequests = async (req, res) => {
       donor.location.coordinates[1], // latitude
       donor.location.coordinates[0], // longitude
       donor.bloodGroup,
-      maxDistance
+      maxDistance,
+      req.user.id
     );
 
     res.json({

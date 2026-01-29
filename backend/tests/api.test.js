@@ -80,6 +80,7 @@ describe('Authentication Endpoints', () => {
 describe('Donor Endpoints', () => {
   let token;
   let userId;
+  let donorId;
 
   beforeAll(async () => {
     // Create test user and get token
@@ -119,6 +120,51 @@ describe('Donor Endpoints', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data.bloodGroup).toBe('O+');
+
+      donorId = response.body.data._id;
+    });
+  });
+
+  describe('GET /api/donor/nearby-requests', () => {
+    it('should not return requests created by the same user', async () => {
+      const BloodRequest = require('../models/BloodRequest');
+
+      // Create a request owned by the same user near the donor location
+      await BloodRequest.create({
+        receiverId: userId,
+        bloodGroup: 'A+',
+        urgency: 'urgent',
+        hospitalName: 'Self Hospital',
+        patientName: 'Self Patient',
+        contactNumber: '9999999999',
+        unitsRequired: 2,
+        address: 'Self Address',
+        city: 'Bangalore',
+        state: 'Karnataka',
+        pincode: '560001',
+        description: 'Self created request',
+        isFake: false,
+        location: {
+          type: 'Point',
+          coordinates: [77.5947, 12.9717]
+        },
+        status: 'pending'
+      });
+
+      const response = await request(app)
+        .get('/api/donor/nearby-requests')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+
+      // Ensure none of the returned requests belong to the same receiverId
+      const ownsAny = (response.body.data || []).some(r => {
+        const rid = r.receiverId && (r.receiverId._id || r.receiverId);
+        return rid && rid.toString() === userId.toString();
+      });
+      expect(ownsAny).toBe(false);
     });
   });
 

@@ -82,12 +82,12 @@ exports.findNearbyDonors = async (latitude, longitude, bloodGroup, maxDistance =
  * @param {Number} maxDistance - Maximum distance in km (default: 50)
  * @returns {Promise<Array>} - Array of nearby requests
  */
-exports.findNearbyRequests = async (latitude, longitude, bloodGroup, maxDistance = 50) => {
+exports.findNearbyRequests = async (latitude, longitude, bloodGroup, maxDistance = 50, excludeReceiverId = null) => {
   const BloodRequest = require('../models/BloodRequest');
   
   try {
     // Find requests that can accept this blood group
-    const compatibleRequests = await BloodRequest.find({
+    const query = {
       status: { $in: ['pending', 'approved'] },
       isFake: false,
       location: {
@@ -99,7 +99,13 @@ exports.findNearbyRequests = async (latitude, longitude, bloodGroup, maxDistance
           $maxDistance: maxDistance * 1000 // Convert km to meters
         }
       }
-    })
+    };
+
+    if (excludeReceiverId) {
+      query.receiverId = { $ne: excludeReceiverId };
+    }
+
+    const compatibleRequests = await BloodRequest.find(query)
     .populate('receiverId', 'name phone')
     .sort({ urgency: -1, createdAt: -1 })
     .limit(30);

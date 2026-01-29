@@ -14,6 +14,10 @@ const connectDB = async () => {
     
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);
+    // During tests, exiting the process causes Jest worker crashes and hides root causes.
+    if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+      throw error;
+    }
     process.exit(1);
   }
 };
