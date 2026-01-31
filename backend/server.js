@@ -53,6 +53,7 @@ app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/donor', require('./routes/donor.routes'));
 app.use('/api/receiver', require('./routes/receiver.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
+app.use('/api/agent', require('./routes/agent.routes')); // 🤖 Agentic AI routes
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/gamification', require('./routes/gamification.routes'));
 app.use('/api/chat', require('./routes/chat.routes'));
@@ -62,6 +63,9 @@ app.use('/api/preferences', require('./routes/preference.routes'));
 app.use('/api/camps', require('./routes/camp.routes'));
 app.use('/api/referral', require('./routes/referral.routes'));
 app.use('/api/public', require('./routes/public.routes'));
+app.use('/api/location', require('./routes/location.routes'));
+app.use('/api/hospital', require('./routes/hospital.routes'));
+app.use('/api/blockchain', require('./routes/blockchain.routes'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

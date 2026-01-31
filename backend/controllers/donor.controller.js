@@ -2,6 +2,7 @@ const Donor = require('../models/Donor');
 const BloodRequest = require('../models/BloodRequest');
 const DonationHistory = require('../models/DonationHistory');
 const geoService = require('../services/geo.service');
+const AgentController = require('../services/agent/agent.controller');
 
 /**
  * @desc    Get or create donor profile
@@ -208,6 +209,15 @@ exports.acceptRequest = async (req, res) => {
     });
 
     await request.save();
+
+    // 🤖 AGENTIC AI: Record donor response for learning
+    try {
+      const agentController = new AgentController(req.app.get('io'));
+      await agentController.handleDonorResponse(request._id, donor._id, true);
+    } catch (agentError) {
+      console.error('Agent learning error:', agentError);
+      // Don't block the response
+    }
 
     res.json({
       success: true,

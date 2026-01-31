@@ -4,6 +4,7 @@ const DonationHistory = require('../models/DonationHistory');
 const Donor = require('../models/Donor');
 const mlService = require('../services/ml.service');
 const geoService = require('../services/geo.service');
+const AgentController = require('../services/agent/agent.controller');
 
 /**
  * @desc    Create new blood request
@@ -43,10 +44,16 @@ exports.createRequest = async (req, res) => {
     analyzeFakeRequest(request._id, req.user.id, { longitude, latitude })
       .catch(err => console.error('ML Analysis error:', err));
 
+    // 🤖 AGENTIC AI: Process request through intelligent matching system
+    // This runs in the background and doesn't block the response
+    processWithAgentSystem(request, req.app.get('io'))
+      .catch(err => console.error('Agent system error:', err));
+
     res.status(201).json({
       success: true,
-      message: 'Blood request created successfully',
-      data: request
+      message: 'Blood request created successfully. Our AI is finding the best donors for you.',
+      data: request,
+      aiProcessing: true
     });
   } catch (error) {
     console.error('Create request error:', error);
@@ -395,7 +402,37 @@ exports.getStats = async (req, res) => {
     console.error('Get receiver stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching statistics'
+      message: 'Error fetching stats'
     });
   }
 };
+
+/**
+ * 🤖 AGENTIC AI: Process blood request through intelligent system
+ * This function runs the complete Observe-Decide-Plan-Act-Learn loop
+ */
+async function processWithAgentSystem(requestData, io) {
+  try {
+    // Wait a moment to ensure request is fully saved
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const agentController = new AgentController(io);
+    const result = await agentController.processBloodRequest(requestData);
+
+    console.log('✅ Agent system processing result:', result);
+
+    // Notify receiver that AI processing is complete
+    if (io && result.success) {
+      io.to(requestData.receiverId.toString()).emit('ai_processing_complete', {
+        requestId: requestData._id,
+        donorsContacted: result.donorsContacted,
+        strategy: result.strategy,
+        processingTime: result.processingTimeMs
+      });
+    }
+
+  } catch (error) {
+    console.error('Agent system processing error:', error);
+    // Don't throw - let the system continue with manual matching
+  }
+}

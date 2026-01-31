@@ -30,7 +30,7 @@ exports.broadcastToLocation = (io, city, notification) => {
 exports.sendEmailNotification = async (to, subject, html) => {
   try {
     // Create transporter using Gmail
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,

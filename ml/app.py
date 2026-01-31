@@ -1,12 +1,14 @@
 """
 LifeLink - ML Inference API using Flask
 Provides /predict endpoint for fake blood request detection
+Extended with Agentic AI donor scoring and strategy recommendation
 """
 
 from flask import Flask, request, jsonify
 import joblib
 import numpy as np
 import os
+from agent_scorer import AgentScorer
 
 app = Flask(__name__)
 
@@ -16,6 +18,7 @@ SCALER_PATH = 'models/scaler.pkl'
 
 model = None
 scaler = None
+agent_scorer = AgentScorer()  # Initialize agentic AI scorer
 
 def load_model():
     """Load the trained model and scaler"""
@@ -140,9 +143,163 @@ def info():
         'endpoints': {
             '/health': 'Health check',
             '/predict': 'Make prediction (POST)',
-            '/info': 'API information (GET)'
+            '/info': 'API information (GET)',
+            '/score-donors': 'Agentic AI donor scoring (POST)',
+            '/recommend-strategy': 'Get matching strategy recommendation (POST)',
+            '/update-learning': 'Update learning data from feedback (POST)'
         }
     }), 200
+
+@app.route('/score-donors', methods=['POST'])
+def score_donors():
+    """
+    Agentic AI endpoint - Score and rank donors
+    
+    Expected JSON body:
+    {
+        "donors": [
+            {
+                "donor_id": "123",
+                "blood_group": "A+",
+                "distance": 5.2,
+                "reliability_score": 85,
+                "can_donate": true,
+                "days_since_last_donation": 100,
+                "is_available": true,
+                "last_active_hours": 2
+            }
+        ],
+        "request_context": {
+            "blood_group": "A+",
+            "urgency": "critical",
+            "location": {"lat": 12.34, "lng": 56.78},
+            "units_required": 2
+        }
+    }
+    
+    Returns: Scored and ranked donors with predictions
+    """
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'donors' not in data or 'request_context' not in data:
+            return jsonify({
+                'error': 'Invalid request',
+                'message': 'Please provide donors array and request_context object'
+            }), 400
+        
+        donors_data = data['donors']
+        request_context = data['request_context']
+        
+        # Score donors using agentic AI
+        scored_donors = agent_scorer.score_donors(donors_data, request_context)
+        
+        print(f"🤖 Scored {len(scored_donors)} donors for {request_context.get('urgency', 'normal')} request")
+        
+        return jsonify({
+            'success': True,
+            'scored_donors': scored_donors,
+            'total_donors': len(scored_donors),
+            'top_score': scored_donors[0]['total_score'] if scored_donors else 0
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Scoring error: {e}")
+        return jsonify({
+            'error': 'Scoring failed',
+            'message': str(e)
+        }), 500
+
+@app.route('/recommend-strategy', methods=['POST'])
+def recommend_strategy():
+    """
+    Agentic AI endpoint - Recommend matching strategy
+    
+    Expected JSON body:
+    {
+        "scored_donors": [...],  # From /score-donors response
+        "request_context": {
+            "urgency": "critical",
+            "blood_group": "A+",
+            "units_required": 2
+        }
+    }
+    
+    Returns: Recommended strategy (targeted, broadcast, escalation, hybrid)
+    """
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'scored_donors' not in data or 'request_context' not in data:
+            return jsonify({
+                'error': 'Invalid request',
+                'message': 'Please provide scored_donors and request_context'
+            }), 400
+        
+        scored_donors = data['scored_donors']
+        request_context = data['request_context']
+        
+        # Get strategy recommendation
+        strategy = agent_scorer.recommend_strategy(scored_donors, request_context)
+        
+        print(f"🎯 Strategy recommended: {strategy['type']} - {strategy['reasoning']}")
+        
+        return jsonify({
+            'success': True,
+            'strategy': strategy
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Strategy recommendation error: {e}")
+        return jsonify({
+            'error': 'Strategy recommendation failed',
+            'message': str(e)
+        }), 500
+
+@app.route('/update-learning', methods=['POST'])
+def update_learning():
+    """
+    Update learning data from feedback
+    
+    Expected JSON body:
+    {
+        "donor_id": "123",
+        "response_time_minutes": 15,
+        "success": true
+    }
+    """
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'donor_id' not in data:
+            return jsonify({
+                'error': 'Invalid request',
+                'message': 'Please provide donor_id, response_time_minutes, and success'
+            }), 400
+        
+        donor_id = data['donor_id']
+        response_time = data.get('response_time_minutes', 0)
+        success = data.get('success', False)
+        
+        # Update learning data
+        agent_scorer.update_learning_data(donor_id, response_time, success)
+        
+        print(f"📚 Learning updated for donor {donor_id}: {response_time}min, success={success}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Learning data updated'
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Learning update error: {e}")
+        return jsonify({
+            'error': 'Learning update failed',
+            'message': str(e)
+        }), 500
 
 if __name__ == '__main__':
     print("=" * 60)
@@ -155,7 +312,10 @@ if __name__ == '__main__':
         print("   URL: http://localhost:5001")
         print("   Endpoints:")
         print("   - GET  /health")
-        print("   - POST /predict")
+        print("   - POST /predict (Fake detection)")
+        print("   - POST /score-donors (Agentic AI)")
+        print("   - POST /recommend-strategy (Agentic AI)")
+        print("   - POST /update-learning (Agentic AI)")
         print("   - GET  /info")
         print("=" * 60)
         
