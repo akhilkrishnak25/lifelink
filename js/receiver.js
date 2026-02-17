@@ -5,10 +5,10 @@ if (!checkAuth()) {
   window.location.href = 'login.html';
 }
 
-// Verify receiver role
+// Verify receiver role (allow admin/super_admin access for monitoring)
 const userData = getUserData();
-if (userData.role === 'admin') {
-  alert('Access denied. This page is for users only.');
+if (userData.role !== 'receiver' && userData.role !== 'admin' && userData.role !== 'super_admin') {
+  alert('Access denied. This page is for receivers only.');
   window.location.replace('login.html');
 }
 

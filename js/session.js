@@ -34,6 +34,27 @@
     return true;
   }
 
+  function requireRole(...roles) {
+    if (!requireAuth()) return false;
+    const user = getUser();
+    // Admin and super_admin can access all pages
+    if (user.role === 'admin' || user.role === 'super_admin') {
+      return true;
+    }
+    // Check if user's role is in allowed roles
+    if (!roles.includes(user.role)) {
+      alert(`Access denied. This page requires: ${roles.join(' or ')}`);
+      window.location.replace('home.html');
+      return false;
+    }
+    return true;
+  }
+
+  function isAdmin() {
+    const user = getUser();
+    return user && (user.role === 'admin' || user.role === 'super_admin');
+  }
+
   function setSession(token, user) {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -49,6 +70,8 @@
     getUser,
     isLoggedIn,
     requireAuth,
+    requireRole,
+    isAdmin,
     redirectIfLoggedIn,
     setSession,
     clearSession,

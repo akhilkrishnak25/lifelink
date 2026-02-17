@@ -104,8 +104,8 @@
         let token = localStorage.getItem('token');
         let userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-        // Check authentication and authorization
-        if (!token || userData.role !== 'admin') {
+        // Check authentication and authorization (allow admin and super_admin)
+        if (!token || (userData.role !== 'admin' && userData.role !== 'super_admin')) {
             window.location.href = 'login.html';
         }
 

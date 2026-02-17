@@ -56,8 +56,14 @@ exports.protect = async (req, res, next) => {
 };
 
 // Grant access to specific roles
+// Admin and Super Admin have access to ALL routes
 exports.authorize = (...roles) => {
   return (req, res, next) => {
+    // Allow admin and super_admin to access any route
+    if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+      return next();
+    }
+    
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
