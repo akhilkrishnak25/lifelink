@@ -45,7 +45,7 @@ async function handleLogin(event) {
       // Redirect based on role
       setTimeout(() => {
         const role = response.data.user.role;
-        if (role === 'admin') {
+        if (role === 'admin' || role === 'super_admin') {
           window.location.replace('admin-dashboard.html');
           return;
         }
@@ -55,7 +55,21 @@ async function handleLogin(event) {
       }, 1000);
     }
   } catch (error) {
-    showAlert(error.message || 'Login failed. Please try again.', 'danger');
+    // Handle specific error codes
+    if (error.code === 'EMAIL_NOT_VERIFIED') {
+      showAlert(error.message, 'warning');
+      // Redirect to email verification page
+      setTimeout(() => {
+        window.location.href = `verify-email.html?email=${encodeURIComponent(email)}`;
+      }, 2000);
+      return;
+    } else if (error.code === 'ADMIN_APPROVAL_PENDING') {
+      showAlert(error.message, 'info');
+    } else if (error.code === 'ADMIN_REJECTED') {
+      showAlert(error.message + (error.reason ? ` Reason: ${error.reason}` : ''), 'danger');
+    } else {
+      showAlert(error.message || 'Login failed. Please try again.', 'danger');
+    }
     
     // Re-enable submit button
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -92,8 +106,8 @@ async function handleRegister(event) {
     return;
   }
 
-  if (password.length < 6) {
-    showAlert('Password must be at least 6 characters', 'danger');
+  if (password.length < 8) {
+    showAlert('Password must be at least 8 characters', 'danger');
     return;
   }
 
@@ -183,6 +197,18 @@ async function handleRegister(event) {
     const response = await apiRequest('/api/auth/register', 'POST', requestData);
 
     if (response.success) {
+      // NEW: Check if email verification is required
+      if (response.data.requiresEmailVerification) {
+        showAlert(response.message, 'success');
+        
+        // Redirect to email verification page
+        setTimeout(() => {
+          window.location.href = `verify-email.html?email=${encodeURIComponent(email)}`;
+        }, 1500);
+        return;
+      }
+
+      // OLD FLOW: For backward compatibility (existing users)
       // Store token and user data
       if (window.Session && typeof Session.setSession === 'function') {
         Session.setSession(response.data.token, response.data.user);
@@ -195,7 +221,7 @@ async function handleRegister(event) {
 
       // Redirect based on role
       setTimeout(() => {
-        if (role === 'admin') {
+        if (role === 'admin' || role === 'super_admin') {
           window.location.replace('admin-dashboard.html');
           return;
         }

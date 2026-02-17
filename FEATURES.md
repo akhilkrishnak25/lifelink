@@ -498,6 +498,148 @@ await analytics.init();
 
 ---
 
+---
+
+### 21. Agentic AI Smart Matching System ✅
+**Location:** `backend/services/agent/`, `ml/agent_scorer.py`, `agent-dashboard.html`
+
+**Features:**
+- Autonomous Observe → Decide → Plan → Act → Learn loop
+- Intelligent donor scoring (6 factors)
+- Behavioral predictions (response time, success probability)
+- Dynamic strategy selection (targeted/broadcast/escalation/hybrid)
+- Self-learning from donor responses
+- Performance tracking and improvement
+
+**AI Scoring Factors:**
+- Distance (0-100 score)
+- Reliability score
+- Eligibility status
+- Response history
+- Blood type match
+- Availability
+
+**Admin Dashboard:**
+- View all agent processing states
+- See AI decision reasoning
+- Track donor scores and predictions
+- Monitor performance metrics
+- Manual escalation triggers
+
+**API Endpoints:**
+```
+GET /api/agent/insights
+GET /api/agent/request/:requestId/state
+GET /api/agent/states
+POST /api/agent/request/:requestId/escalate
+GET /api/agent/performance
+
+POST /score-donors (ML Service)
+POST /recommend-strategy (ML Service)
+POST /update-learning (ML Service)
+```
+
+**Usage:**
+```javascript
+// Agent automatically processes new requests
+// View dashboard at: agent-dashboard.html
+
+// Manual escalation (admin only)
+await fetch('/api/agent/request/${requestId}/escalate', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+**Performance Metrics Tracked:**
+- Response rate (% donors who responded)
+- Success rate (% donors who accepted)
+- Average response time
+- Strategy effectiveness
+- Prediction accuracy
+
+**Learning Capabilities:**
+- Updates response time predictions
+- Adjusts success probability estimates
+- Improves strategy selection
+- Learns from seasonal patterns
+- Optimizes donor scoring weights
+
+---
+
+### 22. Blockchain Security Layer ✅
+**Location:** `backend/services/blockchain/`, `backend/models/BlockchainRecord.js`, `blockchain-records.html`
+
+**Features:**
+- Tamper-proof donation records
+- Cryptographic hashing (SHA-256)
+- On-chain transaction storage
+- IPFS integration support
+- Trust score calculation
+- Immutable audit trail
+
+**Supported Chains:**
+- Polygon (default)
+- Ethereum
+- BSC
+- Pluggable adapter architecture
+
+**Record Types:**
+- Donation records
+- Request verification
+- Trust score updates
+
+**Admin Dashboard:**
+- View all blockchain records
+- Filter by status, action, chain
+- Verify transactions on-chain
+- Create new records
+- View trust scores
+
+**API Endpoints:**
+```
+POST /api/blockchain/donation
+POST /api/blockchain/verify-request
+GET /api/blockchain/trust-score/:userId
+GET /api/blockchain/records
+GET /api/blockchain/verify/:txHash
+```
+
+**Usage:**
+```javascript
+// Create donation record
+await fetch('/api/blockchain/donation', {
+    method: 'POST',
+    headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        donationId: '...',
+        ipfsHash: 'Qm...',
+        payload: { /* donation data */ }
+    })
+});
+
+// View records at: blockchain-records.html
+```
+
+**Security Features:**
+- SHA-256 payload hashing
+- Immutable once confirmed
+- Publicly verifiable
+- Tamper-proof audit trail
+- Optional IPFS storage
+
+**Trust Score Algorithm:**
+```javascript
+// Score 0-100 based on confirmed donations
+// Formula: (1 - e^(-donations/10)) * 100
+// Saturates at ~100 for very active donors
+```
+
+---
+
 ## 🎨 UI Components
 
 ### Notification Container

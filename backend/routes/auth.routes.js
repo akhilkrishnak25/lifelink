@@ -12,12 +12,26 @@ const {
   updateProfile,
   logout,
   getDashboard,
-  getWeekly
+  getWeekly,
+  verifyEmailOtp,
+  resendEmailOtp,
+  forgotPassword,
+  verifyResetOtp,
+  resetPassword
 } = require('../controllers/auth.controller');
 
-// Public routes
+// Public routes - Registration & Login
 router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
+
+// Public routes - Email OTP Verification
+router.post('/verify-otp', verifyEmailOtp);
+router.post('/resend-otp', resendEmailOtp);
+
+// Public routes - Password Reset
+router.post('/forgot-password', forgotPassword);
+router.post('/verify-reset-otp', verifyResetOtp);
+router.post('/reset-password', resetPassword);
 
 // Protected routes
 router.get('/me', protect, getMe);

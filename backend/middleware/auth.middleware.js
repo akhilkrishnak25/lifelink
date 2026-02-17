@@ -68,6 +68,17 @@ exports.authorize = (...roles) => {
   };
 };
 
+// Super Admin only access
+exports.authorizeSuperAdmin = (req, res, next) => {
+  if (req.user.role !== 'super_admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Super Admin privileges required.'
+    });
+  }
+  next();
+};
+
 // Optional auth - doesn't fail if no token, but attaches user if token exists
 exports.optionalAuth = async (req, res, next) => {
   try {

@@ -47,6 +47,10 @@
                     <input type="password" id="password" class="form-control" placeholder="Enter your password" required aria-required="true" autocomplete="current-password">
                 </div>
 
+                <div style="text-align: right; margin-bottom: 1rem;">
+                    <a href="forgot-password.html" style="color: #dc2626; font-size: 0.875rem;">Forgot Password?</a>
+                </div>
+
                 <button type="submit" class="btn btn-primary btn-block">Login</button>
             </form>
 
@@ -85,6 +89,17 @@
     <script src="js/common.js"></script>
     <script src="js/auth.js"></script>
     <script>
+        // Show notification messages from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.get('verified') === 'true') {
+            showAlert('✅ Email verified successfully! You can now login.', 'success');
+        } else if (urlParams.get('pending') === 'true') {
+            showAlert('⏳ Email verified! Your admin account is pending Super Admin approval.', 'info');
+        } else if (urlParams.get('reset') === 'success') {
+            showAlert('✅ Password reset successful! Please login with your new password.', 'success');
+        }
+        
         // Check if already logged in
         (function checkExistingSession() {
             const token = localStorage.getItem('token');
