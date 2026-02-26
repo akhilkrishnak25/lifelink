@@ -32,8 +32,8 @@ function checkAuth() {
     
     try {
         const user = JSON.parse(userStr);
-        // Allow access for admin and super_admin roles
-        const allowedRoles = ['admin', 'super_admin', 'donor', 'receiver'];
+        // Allow access for all authenticated users
+        const allowedRoles = ['user', 'admin', 'super_admin', 'donor', 'receiver'];
         if (!user.role || !allowedRoles.includes(user.role)) {
             console.log('Invalid role:', user.role, 'Redirecting to home');
             window.location.href = 'home.html';
