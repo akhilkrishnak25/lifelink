@@ -6,6 +6,18 @@ const API_BASE_URL = window.location.hostname === 'localhost'
   : 'https://lifelink-dmvb.onrender.com';
 
 /**
+ * Fetch with timeout
+ */
+function fetchWithTimeout(url, options, timeout = 30000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout. The server is taking too long to respond.')), timeout)
+    )
+  ]);
+}
+
+/**
  * Make API request with authentication
  */
 async function apiRequest(endpoint, method = 'GET', data = null) {
@@ -28,20 +40,30 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
 
   try {
     console.log(`[API] ${method} ${endpoint}`, data ? data : '');
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+    const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, options, 30000);
     const result = await response.json();
     console.log(`[API] Response:`, result);
 
     if (!response.ok) {
-      // Handle specific error codes
+      // Preserve error code and details from backend
+      const error = new Error(result.message || 'Request failed');
+      error.code = result.code;
+      error.reason = result.reason;
+      error.userId = result.userId;
+      
+      // Handle specific status codes
       if (response.status === 500) {
-        throw new Error('Server error. The database may be temporarily unavailable. Please try again later.');
+        error.message = result.message || 'Server error. The database may be temporarily unavailable. Please try again later.';
       } else if (response.status === 401) {
-        throw new Error(result.message || 'Invalid credentials. Please check your email and password.');
+        error.message = result.message || 'Invalid credentials. Please check your email and password.';
+      } else if (response.status === 403) {
+        // Preserve 403 errors as-is (email verification, admin approval, etc.)
+        error.message = result.message;
       } else if (response.status === 400) {
-        throw new Error(result.message || 'Invalid request. Please check your input.');
+        error.message = result.message || 'Invalid request. Please check your input.';
       }
-      throw new Error(result.message || 'Request failed');
+      
+      throw error;
     }
 
     return result;
@@ -49,7 +71,8 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     console.error('[API] Error:', error);
     // Check for network errors
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('Unable to connect to server. Please check your internet connection.');
+      const networkError = new Error('Unable to connect to server. Please check your internet connection or try again later.');
+      throw networkError;
     }
     throw error;
   }

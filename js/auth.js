@@ -55,26 +55,31 @@ async function handleLogin(event) {
       }, 1000);
     }
   } catch (error) {
+    console.error('Login error:', error);
+    
     // Handle specific error codes
     if (error.code === 'EMAIL_NOT_VERIFIED') {
-      showAlert(error.message, 'warning');
+      showAlert('⚠️ Email not verified. Please check your email and verify your account before logging in.', 'warning');
       // Redirect to email verification page
       setTimeout(() => {
         window.location.href = `verify-email.html?email=${encodeURIComponent(email)}`;
       }, 2000);
       return;
     } else if (error.code === 'ADMIN_APPROVAL_PENDING') {
-      showAlert(error.message, 'info');
+      showAlert('⏳ ' + (error.message || 'Your admin account is pending approval.'), 'info');
     } else if (error.code === 'ADMIN_REJECTED') {
-      showAlert(error.message + (error.reason ? ` Reason: ${error.reason}` : ''), 'danger');
+      const rejectionMsg = error.reason ? ` Reason: ${error.reason}` : '';
+      showAlert('❌ ' + (error.message || 'Admin registration rejected.') + rejectionMsg, 'danger');
     } else {
-      showAlert(error.message || 'Login failed. Please try again.', 'danger');
+      showAlert('❌ ' + (error.message || 'Login failed. Please check your credentials and try again.'), 'danger');
     }
     
     // Re-enable submit button
     const submitBtn = event.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Login';
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Login';
+    }
   }
 }
 
@@ -197,9 +202,9 @@ async function handleRegister(event) {
     const response = await apiRequest('/api/auth/register', 'POST', requestData);
 
     if (response.success) {
-      // NEW: Check if email verification is required
-      if (response.data.requiresEmailVerification) {
-        showAlert(response.message, 'success');
+      // Check if email verification is required
+      if (response.data && response.data.requiresEmailVerification) {
+        showAlert('✅ ' + (response.message || 'Registration successful! Please check your email for verification code.'), 'success');
         
         // Redirect to email verification page
         setTimeout(() => {
@@ -208,34 +213,39 @@ async function handleRegister(event) {
         return;
       }
 
-      // OLD FLOW: For backward compatibility (existing users)
-      // Store token and user data
-      if (window.Session && typeof Session.setSession === 'function') {
-        Session.setSession(response.data.token, response.data.user);
-      } else {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-      }
-
-      showAlert('Registration successful! Redirecting...', 'success');
-
-      // Redirect based on role
-      setTimeout(() => {
-        if (role === 'admin' || role === 'super_admin') {
-          window.location.replace('admin-dashboard.html');
-          return;
+      // Backward compatibility: For old flow without email verification
+      if (response.data && response.data.token && response.data.user) {
+        // Store token and user data
+        if (window.Session && typeof Session.setSession === 'function') {
+          Session.setSession(response.data.token, response.data.user);
+        } else {
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
         }
 
-        // For normal users: go to the Home hub with sidebar
-        window.location.replace('home.html');
-      }, 1000);
+        showAlert('✅ Registration successful! Redirecting...', 'success');
+
+        // Redirect based on role
+        setTimeout(() => {
+          if (role === 'admin' || role === 'super_admin') {
+            window.location.replace('admin-dashboard.html');
+            return;
+          }
+
+          // For normal users: go to the Home hub with sidebar
+          window.location.replace('home.html');
+        }, 1000);
+      }
     }
   } catch (error) {
-    showAlert(error.message || 'Registration failed. Please try again.', 'danger');
+    console.error('Registration error:', error);
+    showAlert('❌ ' + (error.message || 'Registration failed. Please try again.'), 'danger');
     
     // Re-enable submit button
     const submitBtn = event.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Register';
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Register';
+    }
   }
 }
