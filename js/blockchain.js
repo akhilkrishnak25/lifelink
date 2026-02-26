@@ -3,7 +3,11 @@
  * Interface for viewing and managing blockchain security records
  */
 
-const API_URL = 'http://localhost:5000/api';
+// Use localhost for local development, production URL for deployed version
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:5000/api' 
+  : 'https://lifelink-dmvb.onrender.com/api';
+
 let currentRecords = [];
 let currentTxHash = null;
 
@@ -18,16 +22,27 @@ document.addEventListener('DOMContentLoaded', () => {
 // Check authentication
 function checkAuth() {
     const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!token) {
+    const userStr = localStorage.getItem('user');
+    
+    if (!token || !userStr) {
+        console.log('No token or user data found, redirecting to login');
         window.location.href = 'login.html';
         return;
     }
     
-    // Allow access for admin and super_admin roles
-    const allowedRoles = ['admin', 'super_admin', 'donor', 'receiver'];
-    if (!allowedRoles.includes(user.role)) {
-        window.location.href = 'home.html';
+    try {
+        const user = JSON.parse(userStr);
+        // Allow access for admin and super_admin roles
+        const allowedRoles = ['admin', 'super_admin', 'donor', 'receiver'];
+        if (!user.role || !allowedRoles.includes(user.role)) {
+            console.log('Invalid role:', user.role, 'Redirecting to home');
+            window.location.href = 'home.html';
+            return;
+        }
+        console.log('Auth check passed for user:', user.email, 'role:', user.role);
+    } catch (e) {
+        console.error('Error parsing user data:', e);
+        window.location.href = 'login.html';
         return;
     }
 }

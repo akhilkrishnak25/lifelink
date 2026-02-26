@@ -3,7 +3,11 @@
  * Admin interface for viewing and managing AI agent states
  */
 
-const API_URL = 'http://localhost:5000/api';
+// Use localhost for local development, production URL for deployed version
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:5000/api' 
+  : 'https://lifelink-dmvb.onrender.com/api';
+
 let currentPage = 1;
 let currentRequestId = null;
 let performanceChart = null;
@@ -19,9 +23,25 @@ document.addEventListener('DOMContentLoaded', () => {
 // Check authentication
 function checkAuth() {
     const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    // Allow admin and super_admin access
-    if (!token || (user.role !== 'admin' && user.role !== 'super_admin')) {
+    const userStr = localStorage.getItem('user');
+    
+    if (!token || !userStr) {
+        console.log('No token or user data found, redirecting to login');
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    try {
+        const user = JSON.parse(userStr);
+        // Allow admin and super_admin access
+        if (!user.role || (user.role !== 'admin' && user.role !== 'super_admin')) {
+            console.log('Invalid role for admin access:', user.role);
+            window.location.href = 'login.html';
+            return;
+        }
+        console.log('Auth check passed for admin user:', user.email, 'role:', user.role);
+    } catch (e) {
+        console.error('Error parsing user data:', e);
         window.location.href = 'login.html';
         return;
     }
