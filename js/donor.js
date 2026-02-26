@@ -7,10 +7,10 @@ if (!checkAuth()) {
   window.location.href = 'login.html';
 }
 
-// Verify donor role (allow admin/super_admin access for monitoring)
+// Verify donor role (allow user, admin, and super_admin access)
 const userData = getUserData();
-if (userData.role !== 'donor' && userData.role !== 'admin' && userData.role !== 'super_admin') {
-  alert('Access denied. This page is for donors only.');
+if (userData.role !== 'user' && userData.role !== 'donor' && userData.role !== 'admin' && userData.role !== 'super_admin') {
+  alert('Access denied. Please login to access this page.');
   window.location.replace('login.html');
 }
 

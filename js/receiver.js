@@ -5,10 +5,10 @@ if (!checkAuth()) {
   window.location.href = 'login.html';
 }
 
-// Verify receiver role (allow admin/super_admin access for monitoring)
+// Verify receiver role (allow user, admin, and super_admin access)
 const userData = getUserData();
-if (userData.role !== 'receiver' && userData.role !== 'admin' && userData.role !== 'super_admin') {
-  alert('Access denied. This page is for receivers only.');
+if (userData.role !== 'user' && userData.role !== 'receiver' && userData.role !== 'admin' && userData.role !== 'super_admin') {
+  alert('Access denied. Please login to access this page.');
   window.location.replace('login.html');
 }
 
