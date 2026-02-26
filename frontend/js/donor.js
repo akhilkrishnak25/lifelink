@@ -7,11 +7,11 @@ if (!checkAuth()) {
   window.location.href = 'login.html';
 }
 
-// Verify donor role
+// Verify donor role (allow user, admin, and super_admin access)
 const userData = getUserData();
-if (userData.role !== 'donor') {
-  alert('Access denied. This page is for donors only.');
-  window.location.href = 'login.html';
+if (userData.role !== 'user' && userData.role !== 'donor' && userData.role !== 'admin' && userData.role !== 'super_admin') {
+  alert('Access denied. Please login to access this page.');
+  window.location.replace('login.html');
 }
 
 // Load donor data on page load
