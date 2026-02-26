@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Management - LifeLink</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <link rel="stylesheet" href="css/sidebar.css">
+    <style>
+        .tab-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover {
+            background: #f8f9fa;
+        }
+        .tab-btn.active {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .user-table th, .user-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .user-table th {
+            background: #f8f9fa;
+            font-weight: 700;
+        }
+        .user-table tr:hover {
+            background: #f8f9fa;
+        }
+        .badge-role {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .role-admin {
+            background: #dc3545;
+            color: white;
+        }
+        .role-donor {
+            background: #28a745;
+            color: white;
+        }
+        .role-receiver {
+            background: #007bff;
+            color: white;
+        }
+        .status-active {
+            color: #28a745;
+            font-weight: 600;
+        }
+        .status-inactive {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        .action-btn {
+            padding: 0.35rem 0.75rem;
+            margin: 0.25rem;
+            font-size: 0.85rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .analytics-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .analytics-card h4 {
+            margin: 0 0 0.5rem 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .analytics-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        .log-entry {
+            padding: 1rem;
+            background: #f8f9fa;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+        }
+        .log-entry .timestamp {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        .filter-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .filter-group input, .filter-group select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <script src="js/session.js"></script>
+    <script>
+        // Ensure only admin can access
+        const user = Session.getUser();
+        if (!user || user.role !== 'admin') {
+            window.location.href = 'index.html';
+        }
+    </script>
+
+    <div class="mobile-topbar">
+        <button class="menu-btn" id="sidebarToggle">☰ Menu</button>
+        <div style="font-weight: 800;">🩸 LifeLink Admin</div>
+        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">🩸 LifeLink Admin</div>
+
+            <div class="user">
+                <div class="name" id="sidebarUserName">Admin</div>
+                <div class="meta" id="sidebarUserMeta">Administrator</div>
+            </div>
+
+            <div class="section">Admin Panel</div>
+            <nav>
+                <a class="nav-item" href="admin-dashboard.html">🏠 Dashboard</a>
+                <a class="nav-item active" href="admin-view.html">⚙️ Management</a>
+                <a class="nav-item" href="agent-dashboard.html">🤖 AI Agent</a>
+                <a class="nav-item" href="blockchain-records.html">🔗 Blockchain</a>
+                <a class="nav-item" href="ai-transparency.html">📊 AI Transparency</a>
+            </nav>
+
+            <div class="section">Account</div>
+            <button class="nav-item" onclick="logout()">🚪 Logout</button>
+        </aside>
+
+        <main class="content">
+            <div id="alertContainer"></div>
+
+            <div class="card">
+                <div class="card-header">⚙️ Admin Management Panel</div>
+                <p>Comprehensive platform administration and user management</p>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="switchTab('users')">👥 User Management</button>
+                <button class="tab-btn" onclick="switchTab('donors')">🩸 Donor Management</button>
+                <button class="tab-btn" onclick="switchTab('analytics')">📊 Advanced Analytics</button>
+                <button class="tab-btn" onclick="switchTab('logs')">📝 Activity Logs</button>
+                <button class="tab-btn" onclick="switchTab('export')">💾 Export Data</button>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="users-tab" class="tab-content active">
+                <div class="card">
+                    <div class="card-header">User Management</div>
+                    
+                    <div class="filter-group">
+                        <input type="text" id="userSearch" placeholder="Search users..." onkeyup="filterUsers()">
+                        <select id="roleFilter" onchange="filterUsers()">
+                            <option value="">All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="donor">Donor</option>
+                            <option value="receiver">Receiver</option>
+                        </select>
+                        <select id="statusFilter" onchange="filterUsers()">
+                            <option value="">All Status</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="loadUsers()">🔄 Refresh</button>
+                    </div>
+
+                    <div id="usersContainer">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Donors Tab -->
+            <div id="donors-tab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">Donor Management</div>
+                    
+                    <div class="filter-group">
+                        <input type="text" id="donorSearch" placeholder="Search donors..." onkeyup="filterDonors()">
+                        <select id="bloodGroupFilter" onchange="filterDonors()">
+                            <option value="">All Blood Groups</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                        </select>
+                        <select id="availabilityFilter" onchange="filterDonors()">
+                            <option value="">All Availability</option>
+                            <option value="true">Available</option>
+                            <option value="false">Not Available</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="loadDonors()">🔄 Refresh</button>
+                    </div>
+
+                    <div id="donorsContainer">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics-tab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">Advanced Analytics</div>
+                    
+                    <div class="stats-grid">
+                        <div class="analytics-card" style="border-left: 4px solid #667eea;">
+                            <h4>Total Platform Users</h4>
+                            <p class="value" style="color: #667eea;" id="analyticsUsers">--</p>
+                        </div>
+                        <div class="analytics-card" style="border-left: 4px solid #dc3545;">
+                            <h4>Active Donors Today</h4>
+                            <p class="value" style="color: #dc3545;" id="analyticsDonors">--</p>
+                        </div>
+                        <div class="analytics-card" style="border-left: 4px solid #28a745;">
+                            <h4>Successful Matches</h4>
+                            <p class="value" style="color: #28a745;" id="analyticsMatches">--</p>
+                        </div>
+                        <div class="analytics-card" style="border-left: 4px solid #f59e0b;">
+                            <h4>Pending Requests</h4>
+                            <p class="value" style="color: #f59e0b;" id="analyticsPending">--</p>
+                        </div>
+                        <div class="analytics-card" style="border-left: 4px solid #8b5cf6;">
+                            <h4>Cities Covered</h4>
+                            <p class="value" style="color: #8b5cf6;" id="analyticsCities">--</p>
+                        </div>
+                        <div class="analytics-card" style="border-left: 4px solid #ec4899;">
+                            <h4>AI Detections (7 days)</h4>
+                            <p class="value" style="color: #ec4899;" id="analyticsDetections">--</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card">
+                            <h3>Blood Group Distribution</h3>
+                            <div id="bloodGroupChart"></div>
+                        </div>
+                        <div class="card">
+                            <h3>Request Status Overview</h3>
+                            <div id="requestStatusChart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Tab -->
+            <div id="logs-tab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">Activity Logs</div>
+                    
+                    <div class="filter-group">
+                        <input type="date" id="logDateFrom" placeholder="From Date">
+                        <input type="date" id="logDateTo" placeholder="To Date">
+                        <select id="logType">
+                            <option value="">All Actions</option>
+                            <option value="login">Logins</option>
+                            <option value="register">Registrations</option>
+                            <option value="request">Requests</option>
+                            <option value="donation">Donations</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="loadLogs()">🔄 Refresh</button>
+                    </div>
+
+                    <div id="logsContainer">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Tab -->
+            <div id="export-tab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">Export Data</div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <h3 style="color: white;">📊 Export Users</h3>
+                            <p style="color: rgba(255,255,255,0.9);">Export all user data to CSV</p>
+                            <button class="btn" style="background: white; color: #667eea;" onclick="exportData('users')">Download CSV</button>
+                        </div>
+                        <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                            <h3 style="color: white;">🩸 Export Donors</h3>
+                            <p style="color: rgba(255,255,255,0.9);">Export all donor profiles to CSV</p>
+                            <button class="btn" style="background: white; color: #f5576c;" onclick="exportData('donors')">Download CSV</button>
+                        </div>
+                        <div class="card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                            <h3 style="color: white;">📋 Export Requests</h3>
+                            <p style="color: rgba(255,255,255,0.9);">Export all blood requests to CSV</p>
+                            <button class="btn" style="background: white; color: #00f2fe;" onclick="exportData('requests')">Download CSV</button>
+                        </div>
+                        <div class="card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
+                            <h3 style="color: white;">✅ Export Donations</h3>
+                            <p style="color: rgba(255,255,255,0.9);">Export donation history to CSV</p>
+                            <button class="btn" style="background: white; color: #38f9d7;" onclick="exportData('donations')">Download CSV</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Generate Reports</h3>
+                        <div class="filter-group">
+                            <select id="reportType">
+                                <option value="monthly">Monthly Summary</option>
+                                <option value="weekly">Weekly Summary</option>
+                                <option value="custom">Custom Date Range</option>
+                            </select>
+                            <input type="date" id="reportFrom" placeholder="From">
+                            <input type="date" id="reportTo" placeholder="To">
+                            <button class="btn btn-primary" onclick="generateReport()">📄 Generate Report</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script>
+        let allUsers = [];
+        let allDonors = [];
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // Load data for the selected tab
+            if (tabName === 'users') loadUsers();
+            else if (tabName === 'donors') loadDonors();
+            else if (tabName === 'analytics') loadAnalytics();
+            else if (tabName === 'logs') loadLogs();
+        }
+
+        // Load Users
+        async function loadUsers() {
+            const container = document.getElementById('usersContainer');
+            container.innerHTML = '<div class="spinner"></div>';
+            
+            try {
+                const response = await apiRequest('/api/admin/users', 'GET');
+                
+                if (response.success && response.data) {
+                    allUsers = response.data;
+                    displayUsers(allUsers);
+                } else {
+                    container.innerHTML = '<div class="alert alert-warning">No users found</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="alert alert-danger">Error loading users</div>';
+            }
+        }
+
+        function displayUsers(users) {
+            const container = document.getElementById('usersContainer');
+            
+            if (!users || users.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">No users match the filter</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                            <th>Registered</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>${user.name || 'N/A'}</td>
+                                <td>${user.email}</td>
+                                <td><span class="badge-role role-${user.role}">${user.role.toUpperCase()}</span></td>
+                                <td>${user.phone || 'N/A'}</td>
+                                <td class="${user.isActive ? 'status-active' : 'status-inactive'}">
+                                    ${user.isActive ? '✓ Active' : '✗ Inactive'}
+                                </td>
+                                <td>${new Date(user.createdAt).toLocaleDateString()}</td>
+                                <td>
+                                    <button class="btn ${user.isActive ? 'btn-warning' : 'btn-success'} action-btn" 
+                                            onclick="toggleUserStatus('${user._id}', ${!user.isActive})">
+                                        ${user.isActive ? 'Deactivate' : 'Activate'}
+                                    </button>
+                                    ${user.role !== 'admin' ? `
+                                        <button class="btn btn-danger action-btn" onclick="deleteUser('${user._id}')">Delete</button>
+                                    ` : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function filterUsers() {
+            const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            let filtered = allUsers.filter(user => {
+                const matchesSearch = !searchTerm || 
+                    user.name?.toLowerCase().includes(searchTerm) || 
+                    user.email.toLowerCase().includes(searchTerm);
+                const matchesRole = !roleFilter || user.role === roleFilter;
+                const matchesStatus = !statusFilter || user.isActive.toString() === statusFilter;
+                
+                return matchesSearch && matchesRole && matchesStatus;
+            });
+            
+            displayUsers(filtered);
+        }
+
+        async function toggleUserStatus(userId, newStatus) {
+            try {
+                const response = await apiRequest(`/api/admin/users/${userId}/status`, 'PUT', {
+                    isActive: newStatus
+                });
+                
+                if (response.success) {
+                    showAlert(`User ${newStatus ? 'activated' : 'deactivated'} successfully`, 'success');
+                    loadUsers();
+                }
+            } catch (error) {
+                showAlert('Error updating user status', 'danger');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+            
+            try {
+                const response = await apiRequest(`/api/admin/users/${userId}`, 'DELETE');
+                
+                if (response.success) {
+                    showAlert('User deleted successfully', 'success');
+                    loadUsers();
+                }
+            } catch (error) {
+                showAlert('Error deleting user', 'danger');
+            }
+        }
+
+        // Load Donors
+        async function loadDonors() {
+            const container = document.getElementById('donorsContainer');
+            container.innerHTML = '<div class="spinner"></div>';
+            
+            try {
+                const response = await apiRequest('/api/admin/donors', 'GET');
+                
+                if (response.success && response.data) {
+                    allDonors = response.data;
+                    displayDonors(allDonors);
+                } else {
+                    container.innerHTML = '<div class="alert alert-warning">No donors found</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="alert alert-danger">Error loading donors</div>';
+            }
+        }
+
+        function displayDonors(donors) {
+            const container = document.getElementById('donorsContainer');
+            
+            if (!donors || donors.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">No donors match the filter</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Blood Group</th>
+                            <th>Location</th>
+                            <th>Phone</th>
+                            <th>Availability</th>
+                            <th>Last Donation</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${donors.map(donor => `
+                            <tr>
+                                <td>${donor.userId?.name || 'N/A'}</td>
+                                <td><span class="blood-group">${donor.bloodGroup}</span></td>
+                                <td>${donor.city}, ${donor.state}</td>
+                                <td>${donor.phone}</td>
+                                <td class="${donor.isAvailable ? 'status-active' : 'status-inactive'}">
+                                    ${donor.isAvailable ? '✓ Available' : '✗ Not Available'}
+                                </td>
+                                <td>${donor.lastDonationDate ? new Date(donor.lastDonationDate).toLocaleDateString() : 'Never'}</td>
+                                <td>
+                                    <button class="btn btn-primary action-btn" onclick="viewDonorDetails('${donor._id}')">View Details</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function filterDonors() {
+            const searchTerm = document.getElementById('donorSearch').value.toLowerCase();
+            const bloodGroupFilter = document.getElementById('bloodGroupFilter').value;
+            const availabilityFilter = document.getElementById('availabilityFilter').value;
+            
+            let filtered = allDonors.filter(donor => {
+                const matchesSearch = !searchTerm || 
+                    donor.userId?.name?.toLowerCase().includes(searchTerm) || 
+                    donor.city.toLowerCase().includes(searchTerm);
+                const matchesBloodGroup = !bloodGroupFilter || donor.bloodGroup === bloodGroupFilter;
+                const matchesAvailability = !availabilityFilter || donor.isAvailable.toString() === availabilityFilter;
+                
+                return matchesSearch && matchesBloodGroup && matchesAvailability;
+            });
+            
+            displayDonors(filtered);
+        }
+
+        async function viewDonorDetails(donorId) {
+            // Implementation for viewing detailed donor information
+            showAlert('Donor details view coming soon', 'info');
+        }
+
+        // Load Analytics
+        async function loadAnalytics() {
+            try {
+                const response = await apiRequest('/api/admin/analytics', 'GET');
+                
+                if (response.success && response.data) {
+                    document.getElementById('analyticsUsers').textContent = response.data.totalUsers || 0;
+                    document.getElementById('analyticsDonors').textContent = response.data.activeDonors || 0;
+                    document.getElementById('analyticsMatches').textContent = response.data.completedDonations || 0;
+                    document.getElementById('analyticsPending').textContent = response.data.pendingRequests || 0;
+                    document.getElementById('analyticsCities').textContent = response.data.citiesServed || 0;
+                    document.getElementById('analyticsDetections').textContent = response.data.fakeDetections || 0;
+                }
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        // Load Logs
+        async function loadLogs() {
+            const container = document.getElementById('logsContainer');
+            container.innerHTML = '<div class="spinner"></div>';
+            
+            // Simulated logs - replace with actual API call
+            setTimeout(() => {
+                container.innerHTML = `
+                    <div class="log-entry">
+                        <div class="timestamp">${new Date().toLocaleString()}</div>
+                        <strong>User Registration:</strong> New donor registered - John Doe (A+)
+                    </div>
+                    <div class="log-entry">
+                        <div class="timestamp">${new Date(Date.now() - 3600000).toLocaleString()}</div>
+                        <strong>Blood Request:</strong> Emergency request created - O- needed
+                    </div>
+                    <div class="log-entry">
+                        <div class="timestamp">${new Date(Date.now() - 7200000).toLocaleString()}</div>
+                        <strong>Admin Action:</strong> Request flagged as fake - ID: #12345
+                    </div>
+                    <div class="alert alert-info" style="margin-top: 1rem;">
+                        Detailed activity logging coming soon. Integrate with your backend API.
+                    </div>
+                `;
+            }, 500);
+        }
+
+        // Export Data
+        async function exportData(type) {
+            try {
+                showAlert(`Exporting ${type} data...`, 'info');
+                
+                // Simulated export - replace with actual API call
+                setTimeout(() => {
+                    showAlert(`${type} data exported successfully!`, 'success');
+                }, 1000);
+                
+                // In production, use:
+                // const response = await apiRequest(`/api/admin/export/${type}`, 'GET');
+                // Download the CSV file
+            } catch (error) {
+                showAlert('Error exporting data', 'danger');
+            }
+        }
+
+        async function generateReport() {
+            const reportType = document.getElementById('reportType').value;
+            showAlert(`Generating ${reportType} report...`, 'info');
+            
+            setTimeout(() => {
+                showAlert('Report generated successfully!', 'success');
+            }, 1500);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUsers();
+            
+            // Update sidebar user info
+            const user = Session.getUser();
+            if (user) {
+                document.getElementById('sidebarUserName').textContent = user.name || 'Admin';
+                document.getElementById('sidebarUserMeta').textContent = user.email;
+            }
+        });
+    </script>
+</body>
+</html>

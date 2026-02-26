@@ -178,6 +178,34 @@ class NotificationService {
     return Notification.permission === 'granted';
   }
 
+  // Connect method (alias for init with auto-user detection)
+  connect(userId = null) {
+    if (!userId) {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      userId = user._id || user.id;
+    }
+    
+    if (userId) {
+      this.init(userId);
+    } else {
+      console.warn('Cannot connect notification service: User ID not found');
+    }
+  }
+
+  // Listener for new notifications
+  onNotificationReceived(callback) {
+    window.addEventListener('new-notification', (e) => {
+      callback(e.detail);
+    });
+  }
+
+  // Listener for new messages
+  onMessageReceived(callback) {
+    window.addEventListener('new-message', (e) => {
+      callback(e.detail);
+    });
+  }
+
   // Disconnect socket
   disconnect() {
     if (this.socket) {

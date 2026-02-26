@@ -13,7 +13,12 @@ const {
   getPendingAdmins,
   approveAdmin,
   rejectAdmin,
-  getAllAdmins
+  getAllAdmins,
+  getAllDonors,
+  toggleUserStatus,
+  deleteUser,
+  getAdvancedAnalytics,
+  exportData
 } = require('../controllers/admin.controller');
 
 // All routes require authentication
@@ -28,6 +33,13 @@ router.get('/stats', authorize('admin', 'super_admin'), getDashboardStats);
 router.get('/users', authorize('admin', 'super_admin'), getAllUsers);
 router.put('/users/:id/deactivate', authorize('admin', 'super_admin'), deactivateUser);
 router.put('/users/:id/activate', authorize('admin', 'super_admin'), activateUser);
+
+// Admin View Page Routes
+router.get('/donors', authorize('admin', 'super_admin'), getAllDonors);
+router.put('/users/:id/status', authorize('admin', 'super_admin'), toggleUserStatus);
+router.delete('/users/:id', authorize('admin', 'super_admin'), deleteUser);
+router.get('/analytics', authorize('admin', 'super_admin'), getAdvancedAnalytics);
+router.get('/export/:type', authorize('admin', 'super_admin'), exportData);
 
 // Super Admin only routes - Admin approval management
 router.get('/pending-admins', authorizeSuperAdmin, getPendingAdmins);

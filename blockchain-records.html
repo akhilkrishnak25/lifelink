@@ -134,11 +134,36 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div id="sidebar"></div>
+    <!-- Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-    <!-- Main Content -->
-    <div id="main-content" class="main-content">
+    <div class="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">🩸 LifeLink</div>
+
+            <div class="user">
+                <div class="name" id="sidebarUserName">Admin</div>
+                <div class="meta" id="sidebarUserMeta"></div>
+            </div>
+
+            <div class="section">Admin Panel</div>
+            <nav>
+                <a class="nav-item" href="home.html">🏠 Dashboard</a>
+                <a class="nav-item" href="admin-dashboard.html">📊 Admin Dashboard</a>
+                <a class="nav-item" href="admin-view.html">⚙️ Admin Management</a>
+                <a class="nav-item" href="agent-dashboard.html">🤖 AI Agent</a>
+                <a class="nav-item" href="blockchain-records.html">🔗 Blockchain</a>
+                <a class="nav-item" href="ai-transparency.html">📈 AI Transparency</a>
+            </nav>
+
+            <div class="section">Account</div>
+            <button class="nav-item" onclick="window.location.href='login.html'; localStorage.clear();">🚪 Logout</button>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content">
+        <div id="main-content" class="main-content">
         <!-- Header -->
         <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
             <div class="container-fluid">
@@ -253,6 +278,7 @@
                 </div>
             </div>
         </div>
+        </main>
     </div>
 
     <!-- Create Record Modal -->

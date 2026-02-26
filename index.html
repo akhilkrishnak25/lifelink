@@ -44,31 +44,34 @@
         </div>
 
         <!-- Live System Stats -->
-        <div class="card" id="liveStatsCard">
-            <div class="card-header">📊 Live System Stats</div>
-            <div id="statsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; text-align: center;">
-                <div class="stat-card">
-                    <h3 id="statUsers">--</h3>
-                    <p>Users</p>
+        <div class="card" id="liveStatsCard" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <div class="card-header" style="color: white; font-size: 1.5rem; border-bottom: 2px solid rgba(255,255,255,0.3); background: transparent;">📊 Live System Statistics</div>
+            <div id="statsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; text-align: center; padding: 1rem 0;">
+                <div style="background: rgba(255,255,255,0.95); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 id="statUsers" style="color: #667eea; font-size: 2.5rem; margin: 0; font-weight: 700;">--</h3>
+                    <p style="margin: 0.5rem 0 0 0; font-weight: 600; color: #333;">Total Users</p>
                 </div>
-                <div class="stat-card">
-                    <h3 id="statDonors">--</h3>
-                    <p>Active Donors</p>
+                <div style="background: rgba(255,255,255,0.95); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 id="statDonors" style="color: #dc3545; font-size: 2.5rem; margin: 0; font-weight: 700;">--</h3>
+                    <p style="margin: 0.5rem 0 0 0; font-weight: 600; color: #333;">Active Donors</p>
                 </div>
-                <div class="stat-card">
-                    <h3 id="statRequests">--</h3>
-                    <p>Pending Requests</p>
+                <div style="background: rgba(255,255,255,0.95); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 id="statRequests" style="color: #f59e0b; font-size: 2.5rem; margin: 0; font-weight: 700;">--</h3>
+                    <p style="margin: 0.5rem 0 0 0; font-weight: 600; color: #333;">Pending Requests</p>
                 </div>
-                <div class="stat-card">
-                    <h3 id="statDonations">--</h3>
-                    <p>Completed Donations</p>
+                <div style="background: rgba(255,255,255,0.95); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 id="statDonations" style="color: #10b981; font-size: 2.5rem; margin: 0; font-weight: 700;">--</h3>
+                    <p style="margin: 0.5rem 0 0 0; font-weight: 600; color: #333;">Completed Donations</p>
                 </div>
-                <div class="stat-card">
-                    <h3 id="statCities">--</h3>
-                    <p>Cities Served</p>
+                <div style="background: rgba(255,255,255,0.95); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 id="statCities" style="color: #8b5cf6; font-size: 2.5rem; margin: 0; font-weight: 700;">--</h3>
+                    <p style="margin: 0.5rem 0 0 0; font-weight: 600; color: #333;">Cities Served</p>
                 </div>
             </div>
-            <p id="statsError" style="color:#dc3545;display:none;margin-top:0.5rem;"></p>
+            <p id="statsError" style="color:#fff;display:none;margin-top:1rem;text-align:center;font-weight:600;"></p>
+            <p style="text-align: center; margin-top: 1rem; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
+                🔄 Auto-refreshes every 30 seconds
+            </p>
         </div>
 
         <!-- Current Features -->
@@ -308,29 +311,64 @@
                     animateCounter('statRequests', json.data.pendingRequests);
                     animateCounter('statDonations', json.data.completedDonations);
                     animateCounter('statCities', json.data.citiesServed);
+                    // Hide error if stats loaded successfully
+                    document.getElementById('statsError').style.display = 'none';
                 } else {
-                    document.getElementById('statsError').textContent = 'Unable to load stats';
+                    document.getElementById('statsError').textContent = '⚠️ Unable to load stats';
                     document.getElementById('statsError').style.display = 'block';
                 }
             } catch (e) {
-                document.getElementById('statsError').textContent = 'Backend unreachable';
+                console.error('Stats error:', e);
+                document.getElementById('statsError').textContent = '⚠️ Backend connection issue - Stats unavailable';
                 document.getElementById('statsError').style.display = 'block';
             }
         })();
 
+        // Auto-refresh stats every 30 seconds
+        setInterval(async function() {
+            try {
+                const resp = await fetch(API_BASE_URL + '/api/public/stats');
+                const json = await resp.json();
+                if (json.success) {
+                    animateCounter('statUsers', json.data.totalUsers);
+                    animateCounter('statDonors', json.data.activeDonors);
+                    animateCounter('statRequests', json.data.pendingRequests);
+                    animateCounter('statDonations', json.data.completedDonations);
+                    animateCounter('statCities', json.data.citiesServed);
+                    document.getElementById('statsError').style.display = 'none';
+                }
+            } catch (e) {
+                console.error('Stats refresh error:', e);
+            }
+        }, 30000);
+
         function animateCounter(id, target) {
             const el = document.getElementById(id);
             if (!el) return;
-            let current = 0;
-            const step = Math.max(1, Math.ceil(target / 30));
+            
+            const currentText = el.textContent;
+            const current = currentText === '--' ? 0 : parseInt(currentText) || 0;
+            
+            if (current === target) {
+                el.textContent = target;
+                return;
+            }
+            
+            const duration = 1000; // 1 second
+            const steps = 20;
+            const stepValue = (target - current) / steps;
+            const stepTime = duration / steps;
+            
+            let step = 0;
             const interval = setInterval(() => {
-                current += step;
-                if (current >= target) {
-                    current = target;
+                step++;
+                if (step >= steps) {
+                    el.textContent = target;
                     clearInterval(interval);
+                } else {
+                    el.textContent = Math.round(current + (stepValue * step));
                 }
-                el.textContent = current;
-            }, 30);
+            }, stepTime);
         }
 
         // Initialize theme manager

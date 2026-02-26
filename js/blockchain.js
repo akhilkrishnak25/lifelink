@@ -22,6 +22,13 @@ function checkAuth() {
         window.location.href = 'login.html';
         return;
     }
+    
+    // Allow access for admin and super_admin roles
+    const allowedRoles = ['admin', 'super_admin', 'donor', 'receiver'];
+    if (!allowedRoles.includes(user.role)) {
+        window.location.href = 'home.html';
+        return;
+    }
 }
 
 // Setup event listeners

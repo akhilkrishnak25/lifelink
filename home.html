@@ -35,7 +35,7 @@
       </div>
 
       <div class="section">Navigation</div>
-      <nav>
+      <nav id="regularNav">
         <a class="nav-item" href="home.html">🏠 Home</a>
         <a class="nav-item" href="profile.html">👤 Profile</a>
         <a class="nav-item" href="weekly-charts.html">📊 Weekly Charts</a>
@@ -43,6 +43,15 @@
         <a class="nav-item" href="donor-dashboard.html">🩸 Donor View</a>
         <a class="nav-item" href="receiver-dashboard.html">📥 Receiver View</a>
         <a class="nav-item" href="precautions.html">🧾 Donor Precautions</a>
+      </nav>
+
+      <div class="section" id="adminSection" style="display:none;">Admin Panel</div>
+      <nav id="adminNav" style="display:none;">
+        <a class="nav-item" href="admin-dashboard.html">📊 Admin Dashboard</a>
+        <a class="nav-item" href="admin-view.html">⚙️ Admin Management</a>
+        <a class="nav-item" href="agent-dashboard.html">🤖 AI Agent</a>
+        <a class="nav-item" href="blockchain-records.html">🔗 Blockchain</a>
+        <a class="nav-item" href="ai-transparency.html">📈 AI Transparency</a>
       </nav>
 
       <div class="section">Account</div>
@@ -55,6 +64,41 @@
       <div class="card">
         <div class="card-header">Welcome to LifeLink</div>
         <p>This is your home hub. Use the left menu to navigate.</p>
+      </div>
+
+      <!-- Live System Stats -->
+      <div class="card">
+        <div class="card-header">📊 Live System Statistics</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; text-align: center;">
+          <div class="stat-card">
+            <h3 id="statUsers" style="color: #667eea; font-size: 2rem; margin: 0.5rem 0;">--</h3>
+            <p style="margin: 0; font-weight: 600;">Total Users</p>
+          </div>
+          <div class="stat-card">
+            <h3 id="statDonors" style="color: #dc3545; font-size: 2rem; margin: 0.5rem 0;">--</h3>
+            <p style="margin: 0; font-weight: 600;">Active Donors</p>
+          </div>
+          <div class="stat-card">
+            <h3 id="statRequests" style="color: #f59e0b; font-size: 2rem; margin: 0.5rem 0;">--</h3>
+            <p style="margin: 0; font-weight: 600;">Pending Requests</p>
+          </div>
+          <div class="stat-card">
+            <h3 id="statDonations" style="color: #10b981; font-size: 2rem; margin: 0.5rem 0;">--</h3>
+            <p style="margin: 0; font-weight: 600;">Completed</p>
+          </div>
+          <div class="stat-card">
+            <h3 id="statCities" style="color: #8b5cf6; font-size: 2rem; margin: 0.5rem 0;">--</h3>
+            <p style="margin: 0; font-weight: 600;">Cities Served</p>
+          </div>
+        </div>
+        <p id="statsError" style="color:#dc3545; display:none; margin-top:1rem; text-align:center;"></p>
+        <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; opacity: 0.7;">
+          🔄 Updates every 30 seconds
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Your Quick Stats</div>
       </div>
 
       <div class="dashboard-grid">
@@ -88,6 +132,76 @@
   <script src="js/pwa.js"></script>
   <script src="js/sidebar.js"></script>
   <script>
+    // Fetch live system statistics
+    async function loadSystemStats() {
+      try {
+        const resp = await fetch(API_BASE_URL + '/api/public/stats');
+        const json = await resp.json();
+        if (json.success) {
+          animateCounter('statUsers', json.data.totalUsers);
+          animateCounter('statDonors', json.data.activeDonors);
+          animateCounter('statRequests', json.data.pendingRequests);
+          animateCounter('statDonations', json.data.completedDonations);
+          animateCounter('statCities', json.data.citiesServed);
+          // Hide error message if was showing
+          document.getElementById('statsError').style.display = 'none';
+        } else {
+          document.getElementById('statsError').textContent = 'Unable to load live stats';
+          document.getElementById('statsError').style.display = 'block';
+        }
+      } catch (e) {
+        console.error('Stats loading error:', e);
+        document.getElementById('statsError').textContent = 'Stats currently unavailable';
+        document.getElementById('statsError').style.display = 'block';
+      }
+    }
+
+    // Animate counter with smooth transition
+    function animateCounter(id, target) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      
+      const currentText = el.textContent;
+      const current = currentText === '--' ? 0 : parseInt(currentText) || 0;
+      
+      if (current === target) {
+        el.textContent = target;
+        return;
+      }
+      
+      const duration = 1000; // 1 second animation
+      const steps = 30;
+      const stepValue = (target - current) / steps;
+      const stepTime = duration / steps;
+      
+      let step = 0;
+      const interval = setInterval(() => {
+        step++;
+        if (step >= steps) {
+          el.textContent = target;
+          clearInterval(interval);
+        } else {
+          el.textContent = Math.round(current + (stepValue * step));
+        }
+      }, stepTime);
+    }
+
+    // Load stats immediately
+    loadSystemStats();
+    
+    // Refresh stats every 30 seconds
+    setInterval(loadSystemStats, 30000);
+
+    // Show admin navigation if user is admin
+    const user = Session.getUser();
+    if (user && user.role === 'admin') {
+      // Hide regular navigation for admins
+      document.getElementById('regularNav').style.display = 'none';
+      // Show admin navigation
+      document.getElementById('adminSection').style.display = 'block';
+      document.getElementById('adminNav').style.display = 'block';
+    }
+
     // Fetch dashboard data
     (async function loadDashboard() {
       try {

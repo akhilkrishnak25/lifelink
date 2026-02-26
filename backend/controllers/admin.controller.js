@@ -572,3 +572,223 @@ exports.getAllAdmins = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Get all donors with details
+ * @route   GET /api/admin/donors
+ * @access  Private (Admin only)
+ */
+exports.getAllDonors = async (req, res) => {
+  try {
+    const donors = await Donor.find()
+      .populate('userId', 'name email phone isActive')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: donors.length,
+      data: donors
+    });
+  } catch (error) {
+    console.error('Get all donors error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching donors'
+    });
+  }
+};
+
+/**
+ * @desc    Toggle user active status
+ * @route   PUT /api/admin/users/:id/status
+ * @access  Private (Admin only)
+ */
+exports.toggleUserStatus = async (req, res) => {
+  try {
+    const { isActive } = req.body;
+    
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prevent admins from deactivating themselves or other admins
+    if (user.role === 'admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot modify admin users'
+      });
+    }
+
+    user.isActive = isActive;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
+      data: user
+    });
+  } catch (error) {
+    console.error('Toggle user status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user status'
+    });
+  }
+};
+
+/**
+ * @desc    Delete a user
+ * @route   DELETE /api/admin/users/:id
+ * @access  Private (Admin only)
+ */
+exports.deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prevent admins from deleting themselves or other admins
+    if (user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot delete admin users. Use super admin controls instead.'
+      });
+    }
+
+    // Also delete associated donor profile if exists
+    if (user.role === 'donor') {
+      await Donor.findOneAndDelete({ userId: user._id });
+    }
+
+    await user.deleteOne();
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting user'
+    });
+  }
+};
+
+/**
+ * @desc    Get advanced analytics data
+ * @route   GET /api/admin/analytics
+ * @access  Private (Admin only)
+ */
+exports.getAdvancedAnalytics = async (req, res) => {
+  try {
+    const [
+      totalUsers,
+      activeDonors,
+      completedDonations,
+      pendingRequests,
+      citiesServed,
+      fakeDetections
+    ] = await Promise.all([
+      User.countDocuments({ isActive: true }),
+      Donor.countDocuments({ isAvailable: true }),
+      DonationHistory.countDocuments({ status: 'completed' }),
+      BloodRequest.countDocuments({ status: 'pending' }),
+      Donor.distinct('city').then(cities => cities.length),
+      FakeRequestAnalysis.countDocuments({
+        prediction: 'fake',
+        analyzedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+      })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalUsers,
+        activeDonors,
+        completedDonations,
+        pendingRequests,
+        citiesServed: citiesServed || 1,
+        fakeDetections
+      }
+    });
+  } catch (error) {
+    console.error('Get analytics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching analytics'
+    });
+  }
+};
+
+/**
+ * @desc    Export data as CSV
+ * @route   GET /api/admin/export/:type
+ * @access  Private (Admin only)
+ */
+exports.exportData = async (req, res) => {
+  try {
+    const { type } = req.params;
+    
+    let data;
+    let headers;
+    
+    switch (type) {
+      case 'users':
+        data = await User.find().select('-password').lean();
+        headers = ['Name', 'Email', 'Role', 'Phone', 'Active', 'Created At'];
+        break;
+        
+      case 'donors':
+        data = await Donor.find().populate('userId', 'name email').lean();
+        headers = ['Name', 'Email', 'Blood Group', 'City', 'State', 'Available', 'Last Donation'];
+        break;
+        
+      case 'requests':
+        data = await BloodRequest.find().populate('receiverId', 'name email').lean();
+        headers = ['Patient Name', 'Blood Group', 'Hospital', 'City', 'Units', 'Urgency', 'Status', 'Created At'];
+        break;
+        
+      case 'donations':
+        data = await DonationHistory.find().populate('donorId receiverId').lean();
+        headers = ['Donor', 'Receiver', 'Blood Group', 'Units', 'Status', 'Donation Date'];
+        break;
+        
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid export type'
+        });
+    }
+
+    // Convert to CSV (simplified - use a CSV library in production)
+    let csv = headers.join(',') + '\n';
+    csv += data.map(row => {
+      // Format row based on type - this is simplified
+      return Object.values(row).map(val => 
+        typeof val === 'object' ? JSON.stringify(val) : val
+      ).join(',');
+    }).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${type}_export_${Date.now()}.csv`);
+    res.send(csv);
+
+  } catch (error) {
+    console.error('Export data error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error exporting data'
+    });
+  }
+};
