@@ -7,11 +7,25 @@ if (!checkAuth()) {
   window.location.href = 'login.html';
 }
 
-// Verify donor role (allow user, admin, and super_admin access)
+// Verify donor role (allow user, donor, admin, and super_admin access)
 const userData = getUserData();
-if (userData.role !== 'user' && userData.role !== 'donor' && userData.role !== 'admin' && userData.role !== 'super_admin') {
-  alert('Access denied. Please login to access this page.');
+if (!userData || !userData.role) {
+  console.error('[Donor] No user data or role found');
+  alert('Session error. Please login again.');
+  localStorage.clear();
   window.location.replace('login.html');
+}
+
+// Normalize role (trim and lowercase for comparison)
+const userRole = (userData.role || '').trim().toLowerCase();
+const allowedRoles = ['user', 'donor', 'admin', 'super_admin'];
+
+console.log(`[Donor] User role: "${userData.role}" (normalized: "${userRole}")`);
+
+if (!allowedRoles.includes(userRole)) {
+  console.error(`[Donor] Access denied - role "${userData.role}" not in allowed roles:`, allowedRoles);
+  alert(`Access denied. Your account role is "${userData.role}". This page requires: donor, user, admin, or super_admin. Please contact support if this is incorrect.`);
+  window.location.replace('home.html');
 }
 
 // Load donor data on page load

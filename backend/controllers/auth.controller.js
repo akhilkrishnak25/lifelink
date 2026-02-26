@@ -44,7 +44,17 @@ exports.register = async (req, res) => {
     }
 
     // For new registrations: bypass email verification
-    const userRole = role || 'user';
+    // Normalize role: trim and lowercase to prevent formatting issues
+    const userRole = (role || 'user').trim().toLowerCase();
+    
+    // Validate role
+    const validRoles = ['user', 'donor', 'receiver', 'admin', 'super_admin'];
+    if (!validRoles.includes(userRole)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid role. Allowed roles: ${validRoles.join(', ')}`
+      });
+    }
     
     // Create user with security fields (email verification bypassed)
     const user = await User.create({
