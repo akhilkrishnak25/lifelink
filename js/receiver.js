@@ -70,6 +70,31 @@ async function loadMyRequests() {
     if (response.success && response.data.length > 0) {
       container.innerHTML = response.data.map(request => {
         const interestedDonorsCount = request.interestedDonors.length;
+        const locationFlags = request.locationFlags || [];
+        const locationSeverity = request.locationSeverity || 0;
+        
+        // Location flag badges
+        const flagBadges = locationFlags.map(flag => {
+          const flagIcons = {
+            location_jump: '📍',
+            impossible_travel: '✈️',
+            rapid_requests: '⚡',
+            different_ip: '🌐',
+            vpn_detected: '🔒'
+          };
+          const flagLabels = {
+            location_jump: 'Location Jump',
+            impossible_travel: 'Impossible Travel',
+            rapid_requests: 'Rapid Requests',
+            different_ip: 'Different IP',
+            vpn_detected: 'VPN'
+          };
+          return `<span class="badge" style="background-color: #f59e0b; color: white; font-size: 10px; margin: 2px;">${flagIcons[flag] || '🚩'} ${flagLabels[flag] || flag}</span>`;
+        }).join('');
+        
+        // Severity badge
+        const severityColor = locationSeverity >= 70 ? '#dc2626' : (locationSeverity >= 30 ? '#f59e0b' : '');
+        const showSeverity = locationSeverity >= 30;
         
         return `
           <div class="request-card ${request.urgency}">
@@ -78,9 +103,17 @@ async function loadMyRequests() {
                 <span class="blood-group">${request.bloodGroup}</span>
                 <span class="badge badge-${request.urgency}">${request.urgency.toUpperCase()}</span>
                 <span class="badge badge-${request.status}">${request.status.toUpperCase()}</span>
-                ${request.isFake ? '<span class="badge" style="background-color: #dc3545; color: white;">FLAGGED</span>' : ''}
+                ${request.isFake || request.status === 'flagged' ? '<span class="badge" style="background-color: #dc3545; color: white;">FLAGGED</span>' : ''}
+                ${request.status === 'review' ? '<span class="badge" style="background-color: #f59e0b; color: white;">UNDER REVIEW</span>' : ''}
+                ${showSeverity ? `<span class="badge" style="background-color: ${severityColor}; color: white;">⚠️ ${locationSeverity}%</span>` : ''}
               </div>
             </div>
+            ${flagBadges ? `<div style="margin: 8px 0;">${flagBadges}</div>` : ''}
+            ${request.status === 'review' || request.status === 'flagged' ? `
+              <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                <strong>⏳ Manual Review Required:</strong> This request is under admin review due to unusual patterns detected by our fraud prevention system. This helps maintain platform integrity. You'll be notified once reviewed.
+              </div>
+            ` : ''}
             <div class="request-info">
               <div class="info-item">
                 <span class="info-label">Hospital</span>
@@ -251,7 +284,32 @@ async function handleCreateRequest(event) {
     const response = await apiRequest('/api/receiver/request', 'POST', requestData);
 
     if (response.success) {
-      showAlert('Blood request created successfully!', 'success');
+      // Check for warnings/flagged status
+      if (response.needsReview || response.severity >= 70) {
+        // High severity - show detailed warning modal
+        showLocationWarningModal(response);
+      } else if (response.warning || response.severity >= 30) {
+        // Medium severity - show warning alert
+        showAlert(`⚠️ ${response.message}`, 'warning');
+        if (response.reasons && response.reasons.length > 0) {
+          const reasonsHtml = `
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-top: 10px; border-radius: 4px;">
+              <strong>⚠️ Unusual Patterns Detected:</strong>
+              <ul style="margin: 8px 0; padding-left: 20px; font-size: 14px;">
+                ${response.reasons.map(reason => `<li>${reason}</li>`).join('')}
+              </ul>
+              <p style="margin: 8px 0; font-size: 13px; color: #856404;">
+                Your request will undergo additional verification. This helps us maintain the integrity of our platform.
+              </p>
+            </div>
+          `;
+          document.getElementById('alertContainer').innerHTML += reasonsHtml;
+        }
+      } else {
+        // Normal - show success
+        showAlert('Blood request created successfully! Our AI is finding the best donors for you. 🤖', 'success');
+      }
+      
       hideCreateRequestForm();
       await loadMyRequests();
       await loadReceiverStats();
@@ -263,6 +321,87 @@ async function handleCreateRequest(event) {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Submit Request';
   }
+}
+
+/**
+ * Show location warning modal for high-severity requests
+ */
+function showLocationWarningModal(response) {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+  `;
+  
+  const severityColor = response.severity >= 80 ? '#dc2626' : '#f59e0b';
+  const severityLabel = response.severity >= 80 ? 'HIGH RISK' : 'MEDIUM RISK';
+  
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 12px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+      <div style="background: linear-gradient(135deg, ${severityColor} 0%, #991b1b 100%); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+          <div>
+            <h2 style="margin: 0; font-size: 24px; color: white;">🚨 Manual Review Required</h2>
+            <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">Your request has been flagged for verification</p>
+          </div>
+          <button onclick="this.closest('div[style*=fixed]').remove()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; cursor: pointer; padding: 4px 12px; border-radius: 4px;">×</button>
+        </div>
+        <div style="margin-top: 12px; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; display: inline-block;">
+          <strong>Severity: ${response.severity}% - ${severityLabel}</strong>
+        </div>
+      </div>
+      
+      <div style="padding: 24px;">
+        <div style="background: #fee2e2; border-left: 4px solid ${severityColor}; padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+          <p style="margin: 0; font-size: 15px; line-height: 1.6;"><strong>${response.message}</strong></p>
+        </div>
+        
+        ${response.reasons && response.reasons.length > 0 ? `
+          <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 16px; margin: 0 0 12px 0; color: #333;">📊 Detected Patterns:</h3>
+            <ul style="margin: 0; padding-left: 20px; color: #666;">
+              ${response.reasons.map(reason => `<li style="margin-bottom: 8px;">${reason}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+          <h3 style="font-size: 16px; margin: 0 0 8px 0; color: #333;">⏱️ What Happens Next?</h3>
+          <ol style="margin: 0; padding-left: 20px; color: #666; font-size: 14px; line-height: 1.8;">
+            <li>Your request has been submitted and saved</li>
+            <li>Our admin team will review it within a few hours</li>
+            <li>You'll be notified once the review is complete</li>
+            <li>If approved, AI matching will begin automatically</li>
+          </ol>
+        </div>
+        
+        <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+          <h3 style="font-size: 14px; margin: 0 0 8px 0; color: #1976d2;">💡 Why this happens:</h3>
+          <p style="margin: 0; font-size: 13px; color: #666; line-height: 1.6;">
+            Our location-based fraud detection system helps protect the integrity of blood donation by detecting unusual patterns. 
+            This is a precautionary measure and doesn't mean your request is invalid. Genuine requests are quickly approved after a brief review.
+          </p>
+        </div>
+        
+        <div style="display: flex; gap: 12px;">
+          <button onclick="this.closest('div[style*=fixed]').remove()" style="flex: 1; background: ${severityColor}; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500;">
+            I Understand
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
 }
 
 /**

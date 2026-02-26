@@ -6,6 +6,8 @@ const mlService = require('../services/ml.service');
 const geoService = require('../services/geo.service');
 const AgentController = require('../services/agent/agent.controller');
 const locationTrackingService = require('../services/locationTracking.service');
+const emailService = require('../services/email.service');
+const User = require('../models/User');
 
 /**
  * @desc    Create new blood request
@@ -58,6 +60,11 @@ exports.createRequest = async (req, res) => {
       initialStatus = 'pending';
       needsReview = true;
       console.log(`🚩 High severity (${suspicionSeverity}%) - flagging for admin review`);
+      
+      // 📧 Send email alert to admins asynchronously
+      sendAdminAlert(request, analysis).catch(err => 
+        console.error('Error sending admin alert email:', err)
+      );
     }
 
     // Create the blood request
@@ -599,5 +606,31 @@ async function processWithAgentSystem(requestData, io) {
   } catch (error) {
     console.error('Agent system processing error:', error);
     // Don't throw - let the system continue with manual matching
+  }
+}
+
+/**
+ * 📧 Send admin alert for high-severity requests
+ */
+async function sendAdminAlert(requestData, locationAnalysis) {
+  try {
+    // Get all admin emails
+    const admins = await User.find({ 
+      role: { $in: ['admin', 'super_admin'] },
+      isActive: true 
+    }).select('email');
+    
+    const adminEmails = admins.map(admin => admin.email).filter(Boolean);
+    
+    if (adminEmails.length === 0) {
+      console.log('⚠️  No admin emails found for alert notification');
+      return;
+    }
+    
+    await emailService.sendHighSeverityAlert(requestData, locationAnalysis, adminEmails);
+    console.log(`📧 Alert email sent to ${adminEmails.length} admin(s)`);
+  } catch (error) {
+    console.error('Error sending admin alert:', error);
+    // Don't throw - email failure shouldn't block request
   }
 }

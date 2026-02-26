@@ -337,4 +337,175 @@ exports.sendWelcomeEmail = async (email, name, role) => {
   }
 };
 
+/**
+ * Send High-Severity Request Alert to Admins
+ */
+exports.sendHighSeverityAlert = async (requestData, locationAnalysis, adminEmails = []) => {
+  try {
+    const transporter = createTransporter();
+    
+    // Get admin emails from env or use provided list
+    const recipients = adminEmails.length > 0 
+      ? adminEmails.join(',') 
+      : process.env.ADMIN_EMAIL || 'admin@lifelink.com';
+    
+    const severityColor = locationAnalysis.severity >= 80 ? '#dc2626' : '#f59e0b';
+    const severityLabel = locationAnalysis.severity >= 80 ? 'HIGH RISK' : 'MEDIUM RISK';
+    
+    const flagBadges = locationAnalysis.flags.map(flag => {
+      const flagLabels = {
+        location_jump: '📍 Location Jump',
+        impossible_travel: '✈️ Impossible Travel',
+        rapid_requests: '⚡ Rapid Requests',
+        different_ip: '🌐 Different IP',
+        vpn_detected: '🔒 VPN Detected'
+      };
+      return `<span style="background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin: 2px; display: inline-block;">${flagLabels[flag] || flag}</span>`;
+    }).join('');
+    
+    const mailOptions = {
+      from: `LifeLink Fraud Detection <${process.env.EMAIL_USER}>`,
+      to: recipients,
+      subject: `🚨 ${severityLabel} - Suspicious Blood Request Detected`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, ${severityColor} 0%, #991b1b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .alert-box { background: #fee2e2; border: 2px solid ${severityColor}; padding: 20px; margin: 20px 0; border-radius: 8px; }
+            .severity-badge { background: ${severityColor}; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+            .info-item { background: white; padding: 12px; border-left: 3px solid ${severityColor}; border-radius: 4px; }
+            .info-label { font-size: 12px; color: #666; display: block; }
+            .info-value { font-size: 16px; font-weight: bold; color: #333; }
+            .flags-container { margin: 15px 0; }
+            .cta-button { background: ${severityColor}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 5px; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 15px; }
+            .reasons-list { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🚨 Fraud Detection Alert</h1>
+              <p style="margin: 5px 0; font-size: 14px; opacity: 0.9;">Location-Based Pattern Analysis</p>
+              <span class="severity-badge">Severity: ${locationAnalysis.severity}%</span>
+            </div>
+            <div class="content">
+              <div class="alert-box">
+                <h2 style="margin-top: 0; color: ${severityColor};">⚠️ Suspicious Blood Request Flagged</h2>
+                <p>A blood request has been flagged by our location-based fraud detection system for manual review.</p>
+              </div>
+              
+              <h3>📋 Request Details</h3>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Blood Group</span>
+                  <span class="info-value">${requestData.bloodGroup}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Urgency</span>
+                  <span class="info-value">${requestData.urgency.toUpperCase()}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Hospital</span>
+                  <span class="info-value">${requestData.hospitalName}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Patient</span>
+                  <span class="info-value">${requestData.patientName}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Location</span>
+                  <span class="info-value">${requestData.location?.city || 'N/A'}, ${requestData.location?.state || ''}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Units Required</span>
+                  <span class="info-value">${requestData.unitsRequired}</span>
+                </div>
+              </div>
+              
+              <h3>🚩 Detection Flags</h3>
+              <div class="flags-container">
+                ${flagBadges}
+              </div>
+              
+              <div class="reasons-list">
+                <strong>📊 Analysis Details:</strong>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                  ${locationAnalysis.details ? Object.entries(locationAnalysis.details).map(([key, value]) => 
+                    `<li><strong>${key}:</strong> ${JSON.stringify(value)}</li>`
+                  ).join('') : '<li>No additional details available</li>'}
+                </ul>
+                ${locationAnalysis.flags.includes('impossible_travel') ? 
+                  '<p style="color: #991b1b; font-weight: bold;">⚠️ IMPOSSIBLE TRAVEL DETECTED - This request shows physical travel that is not humanly possible in the given timeframe.</p>' : ''}
+                ${locationAnalysis.flags.includes('rapid_requests') ? 
+                  '<p style="color: #f59e0b; font-weight: bold;">⚡ RAPID REQUESTS - Multiple requests submitted in a very short time period.</p>' : ''}
+              </div>
+              
+              <h3>👤 User Information</h3>
+              <div class="info-item" style="margin: 10px 0;">
+                <span class="info-label">IP Address</span>
+                <span class="info-value">${locationAnalysis.details?.ipAddress || 'N/A'}</span>
+              </div>
+              <div class="info-item" style="margin: 10px 0;">
+                <span class="info-label">Location (IP-based)</span>
+                <span class="info-value">${locationAnalysis.details?.city || 'Unknown'}, ${locationAnalysis.details?.country || 'Unknown'}</span>
+              </div>
+              ${locationAnalysis.details?.distanceFromLast ? `
+                <div class="info-item" style="margin: 10px 0;">
+                  <span class="info-label">Distance from Last Request</span>
+                  <span class="info-value">${locationAnalysis.details.distanceFromLast.toFixed(1)} km</span>
+                </div>
+              ` : ''}
+              ${locationAnalysis.details?.timeSinceLast ? `
+                <div class="info-item" style="margin: 10px 0;">
+                  <span class="info-label">Time Since Last Request</span>
+                  <span class="info-value">${locationAnalysis.details.timeSinceLast} minutes</span>
+                </div>
+              ` : ''}
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <p><strong>⚡ Action Required:</strong> This request requires manual admin review before processing.</p>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin-dashboard.html" class="cta-button">Review Request Now</a>
+              </div>
+              
+              <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0;">
+                <strong>🔍 What happens next?</strong>
+                <ol style="margin: 10px 0; padding-left: 20px;">
+                  <li>Request is placed in <strong>pending review</strong> status</li>
+                  <li>AI matching is paused until admin approval</li>
+                  <li>Admin can approve or reject the request</li>
+                  <li>User is notified of the review requirement</li>
+                </ol>
+              </div>
+              
+              <div class="footer">
+                <p><strong>LifeLink Fraud Detection System</strong></p>
+                <p>This alert was generated automatically by the location-based pattern analysis engine.</p>
+                <p style="margin-top: 10px;">Request ID: ${requestData._id || 'N/A'}</p>
+                <p>Timestamp: ${new Date().toLocaleString()}</p>
+                <p>&copy; ${new Date().getFullYear()} LifeLink - Protecting the integrity of blood donation</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('High-Severity Alert Email sent to admins:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending high-severity alert email:', error);
+    // Don't throw error - email failure shouldn't block request processing
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = exports;
