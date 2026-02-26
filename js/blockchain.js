@@ -32,14 +32,14 @@ function checkAuth() {
     
     try {
         const user = JSON.parse(userStr);
-        // Allow access for all authenticated users
-        const allowedRoles = ['user', 'admin', 'super_admin', 'donor', 'receiver'];
+        // Allow access for admin and super_admin only
+        const allowedRoles = ['admin', 'super_admin'];
         if (!user.role || !allowedRoles.includes(user.role)) {
-            console.log('Invalid role:', user.role, 'Redirecting to home');
+            console.log('Access denied. Admin access required. Role:', user.role);
             window.location.href = 'home.html';
             return;
         }
-        console.log('Auth check passed for user:', user.email, 'role:', user.role);
+        console.log('Auth check passed for admin user:', user.email, 'role:', user.role);
     } catch (e) {
         console.error('Error parsing user data:', e);
         window.location.href = 'login.html';

@@ -9,9 +9,9 @@ const {
   getSystemPerformance
 } = require('../controllers/agent.controller');
 
-// All routes protected - accessible to all authenticated users
+// All routes protected - admin only
 router.use(protect);
-router.use(authorize('user', 'admin', 'super_admin'));
+router.use(authorize('admin', 'super_admin'));
 
 // Agent AI visibility endpoints
 router.get('/insights', getAgentInsights);
