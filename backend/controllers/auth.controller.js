@@ -43,35 +43,19 @@ exports.register = async (req, res) => {
       });
     }
 
-    // For new registrations: set email as unverified and account as pending (for admins)
-    const isNewUser = true; // All registrations are new
+    // For new registrations: bypass email verification
     const userRole = role || 'user';
     
-    // Create user with security fields
+    // Create user with security fields (email verification bypassed)
     const user = await User.create({
       name,
       email,
       password,
       phone,
       role: userRole,
-      isEmailVerified: false, // New users must verify email
+      isEmailVerified: true, // Bypass email verification
       accountStatus: userRole === 'admin' ? 'pending' : 'active' // Admins need approval
     });
-
-    // Generate and send OTP
-    const otp = user.generateEmailOtp();
-    await user.save();
-
-    try {
-      await emailService.sendEmailOtp(email, name, otp);
-    } catch (emailError) {
-      // If email fails, delete the user and return error
-      await User.findByIdAndDelete(user._id);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send verification email. Please try again with a valid email address.'
-      });
-    }
 
     // If donor profile data was provided, create donor profile (for user accounts)
     if (role === 'user' && donorData) {
@@ -91,15 +75,18 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Generate token and return user data directly
+    const token = generateToken(user._id);
+
     res.status(201).json({
       success: true,
       message: userRole === 'admin' 
-        ? 'Registration successful! Please verify your email. Admin approval required before login.'
-        : 'Registration successful! Please check your email for verification code.',
+        ? 'Registration successful! Admin approval required before login.'
+        : 'Registration successful!',
       data: {
-        userId: user._id,
-        email: user.email,
-        requiresEmailVerification: true,
+        user: user.getPublicProfile(),
+        token,
+        requiresEmailVerification: false,
         requiresAdminApproval: userRole === 'admin'
       }
     });
@@ -149,36 +136,23 @@ exports.login = async (req, res) => {
       });
     }
 
-    // BACKWARD COMPATIBILITY: Check if user was created before email OTP feature
-    const isLegacyUser = user.createdAt < EMAIL_OTP_FEATURE_DATE;
-
-    if (!isLegacyUser) {
-      // New users must have verified email
-      if (!user.isEmailVerified) {
+    // Email verification bypassed - users can login immediately after registration
+    
+    // Admins must be approved (even with email verification bypassed)
+    if (user.role === 'admin' && user.accountStatus !== 'approved') {
+      if (user.accountStatus === 'pending') {
         return res.status(403).json({
           success: false,
-          message: 'Email not verified. Please verify your email before logging in.',
-          code: 'EMAIL_NOT_VERIFIED',
-          userId: user._id
+          message: 'Your admin account is pending approval. Please wait for Super Admin approval.',
+          code: 'ADMIN_APPROVAL_PENDING'
         });
-      }
-
-      // Admins must be approved
-      if (user.role === 'admin' && user.accountStatus !== 'approved') {
-        if (user.accountStatus === 'pending') {
-          return res.status(403).json({
-            success: false,
-            message: 'Your admin account is pending approval. Please wait for Super Admin approval.',
-            code: 'ADMIN_APPROVAL_PENDING'
-          });
-        } else if (user.accountStatus === 'rejected') {
-          return res.status(403).json({
-            success: false,
-            message: 'Your admin registration was rejected. Please contact support.',
-            code: 'ADMIN_REJECTED',
-            reason: user.rejectionReason
-          });
-        }
+      } else if (user.accountStatus === 'rejected') {
+        return res.status(403).json({
+          success: false,
+          message: 'Your admin registration was rejected. Please contact support.',
+          code: 'ADMIN_REJECTED',
+          reason: user.rejectionReason
+        });
       }
     }
 
