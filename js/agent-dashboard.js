@@ -18,9 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Check authentication
 function checkAuth() {
+    const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     // Allow admin and super_admin access
-    if (!user.token || (user.role !== 'admin' && user.role !== 'super_admin')) {
+    if (!token || (user.role !== 'admin' && user.role !== 'super_admin')) {
         window.location.href = 'login.html';
         return;
     }
