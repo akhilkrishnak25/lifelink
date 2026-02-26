@@ -71,7 +71,7 @@ const bloodRequestSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'completed', 'rejected', 'cancelled'],
+    enum: ['pending', 'approved', 'completed', 'rejected', 'cancelled', 'flagged', 'review'],
     default: 'pending'
   },
   description: {
@@ -90,6 +90,28 @@ const bloodRequestSchema = new mongoose.Schema({
   },
   mlAnalysisDate: {
     type: Date
+  },
+  // Location tracking fields
+  locationSuspicious: {
+    type: Boolean,
+    default: false
+  },
+  locationSeverity: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  locationFlags: [{
+    type: String,
+    enum: ['location_jump', 'rapid_requests', 'different_ip', 'vpn_detected', 'impossible_travel']
+  }],
+  locationDetails: {
+    ipAddress: String,
+    city: String,
+    country: String,
+    distanceFromLast: Number, // km
+    timeSinceLast: Number // minutes
   },
   // Donor responses
   interestedDonors: [{

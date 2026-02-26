@@ -10,7 +10,8 @@ const {
   acceptDonor,
   completeRequest,
   cancelRequest,
-  getStats
+  getStats,
+  getLocationAnalytics
 } = require('../controllers/receiver.controller');
 
 // All routes are protected and receiver-only
@@ -26,5 +27,6 @@ router.put('/request/:id/accept-donor/:donorId', acceptDonor);
 router.put('/request/:id/complete', completeRequest);
 router.put('/request/:id/cancel', cancelRequest);
 router.get('/stats', getStats);
+router.get('/location-analytics', getLocationAnalytics);
 
 module.exports = router;

@@ -42,13 +42,33 @@ const fakeRequestAnalysisSchema = new mongoose.Schema({
   },
   prediction: {
     type: String,
-    enum: ['genuine', 'fake'],
+    enum: ['genuine', 'fake', 'suspicious'],
     required: true
   },
   confidence: {
     type: Number,
     min: 0,
     max: 1
+  },
+  // Location tracking results
+  locationSuspicious: {
+    type: Boolean,
+    default: false
+  },
+  locationSeverity: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  locationFlags: [{
+    type: String
+  }],
+  combinedSeverity: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
   },
   analyzedAt: {
     type: Date,

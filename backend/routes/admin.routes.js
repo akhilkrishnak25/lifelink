@@ -18,7 +18,10 @@ const {
   toggleUserStatus,
   deleteUser,
   getAdvancedAnalytics,
-  exportData
+  exportData,
+  getLocationDetections,
+  getUserLocationHistory,
+  getSuspiciousLocations
 } = require('../controllers/admin.controller');
 
 // All routes require authentication
@@ -40,6 +43,11 @@ router.put('/users/:id/status', authorize('admin', 'super_admin'), toggleUserSta
 router.delete('/users/:id', authorize('admin', 'super_admin'), deleteUser);
 router.get('/analytics', authorize('admin', 'super_admin'), getAdvancedAnalytics);
 router.get('/export/:type', authorize('admin', 'super_admin'), exportData);
+
+// Location-based fraud detection routes
+router.get('/location-detections', authorize('admin', 'super_admin'), getLocationDetections);
+router.get('/user/:userId/location-history', authorize('admin', 'super_admin'), getUserLocationHistory);
+router.get('/suspicious-locations', authorize('admin', 'super_admin'), getSuspiciousLocations);
 
 // Super Admin only routes - Admin approval management
 router.get('/pending-admins', authorizeSuperAdmin, getPendingAdmins);

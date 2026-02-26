@@ -792,3 +792,203 @@ exports.exportData = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Get all location-based suspicious requests
+ * @route   GET /api/admin/location-detections
+ * @access  Private (Admin only)
+ */
+exports.getLocationDetections = async (req, res) => {
+  try {
+    const RequestTracking = require('../models/RequestTracking');
+    
+    // Get suspicious location patterns
+    const suspiciousTracking = await RequestTracking.find({
+      suspicionFlags: { $exists: true, $ne: [] }
+    })
+      .populate('userId', 'name email phone role')
+      .populate('requestId', 'bloodGroup urgency status createdAt locationSeverity')
+      .sort({ timestamp: -1 })
+      .limit(100);
+
+    // Get requests flagged for review or flagged
+    const flaggedRequests = await BloodRequest.find({
+      $or: [
+        { status: 'review' },
+        { status: 'flagged' },
+        { locationSuspicious: true }
+      ]
+    })
+      .populate('receiverId', 'name email phone')
+      .select('bloodGroup urgency hospitalName location createdAt locationSeverity locationFlags locationDetails mlScore status')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    // Calculate statistics
+    const stats = {
+      totalSuspicious: suspiciousTracking.length,
+      flagsByType: {},
+      severityDistribution: {
+        high: 0,   // >= 70
+        medium: 0, // >= 30
+        low: 0     // < 30
+      }
+    };
+
+    // Count flags by type
+    suspiciousTracking.forEach(track => {
+      track.suspicionFlags.forEach(flag => {
+        stats.flagsByType[flag] = (stats.flagsByType[flag] || 0) + 1;
+      });
+
+      // Severity distribution
+      const severity = track.requestId?.locationSeverity || 0;
+      if (severity >= 70) stats.severityDistribution.high++;
+      else if (severity >= 30) stats.severityDistribution.medium++;
+      else stats.severityDistribution.low++;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        suspiciousPatterns: suspiciousTracking,
+        flaggedRequests,
+        stats
+      }
+    });
+  } catch (error) {
+    console.error('Get location detections error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching location detections'
+    });
+  }
+};
+
+/**
+ * @desc    Get location history for a specific user
+ * @route   GET /api/admin/user/:userId/location-history
+ * @access  Private (Admin only)
+ */
+exports.getUserLocationHistory = async (req, res) => {
+  try {
+    const RequestTracking = require('../models/RequestTracking');
+    const locationTrackingService = require('../services/locationTracking.service');
+    
+    const { userId } = req.params;
+
+    // Get user details
+    const user = await User.findById(userId).select('name email phone role');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Get location history
+    const history = await locationTrackingService.getUserLocationHistory(userId);
+
+    // Get all requests by this user
+    const requests = await BloodRequest.find({ receiverId: userId })
+      .select('bloodGroup urgency createdAt status locationSuspicious locationSeverity locationFlags')
+      .sort({ createdAt: -1 });
+
+    // Calculate user risk profile
+    const suspiciousCount = history.filter(h => h.suspicionFlags && h.suspicionFlags.length > 0).length;
+    const uniqueCities = [...new Set(history.map(h => h.location.city).filter(Boolean))];
+    const uniqueIPs = [...new Set(history.map(h => h.ipAddress).filter(Boolean))];
+    
+    const riskProfile = {
+      totalRequests: history.length,
+      suspiciousRequests: suspiciousCount,
+      riskScore: history.length > 0 ? (suspiciousCount / history.length * 100).toFixed(1) : 0,
+      uniqueCities: uniqueCities.length,
+      uniqueIPs: uniqueIPs.length,
+      cities: uniqueCities,
+      mostRecentLocation: history.length > 0 ? history[0].location : null,
+      mostRecentIP: history.length > 0 ? history[0].ipAddress : null
+    };
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        riskProfile,
+        locationHistory: history,
+        requests
+      }
+    });
+  } catch (error) {
+    console.error('Get user location history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user location history'
+    });
+  }
+};
+
+/**
+ * @desc    Get suspicious requests from ip-api.com
+ * @route   GET /api/admin/suspicious-locations
+ * @access  Private (Admin only)
+ */
+exports.getSuspiciousLocations = async (req, res) => {
+  try {
+    const RequestTracking = require('../models/RequestTracking');
+    const locationTrackingService = require('../services/locationTracking.service');
+
+    // Get suspicious tracking records
+    const suspicious = await locationTrackingService.getSuspiciousRequests(100);
+
+    // Group by user
+    const byUser = {};
+    suspicious.forEach(track => {
+      const userId = track.userId.toString();
+      if (!byUser[userId]) {
+        byUser[userId] = {
+          userId,
+          user: null,
+          count: 0,
+          totalSeverity: 0,
+          flags: [],
+          patterns: []
+        };
+      }
+      byUser[userId].count++;
+      byUser[userId].totalSeverity += (track.requestId?.locationSeverity || 0);
+      byUser[userId].patterns.push(track);
+      track.suspicionFlags.forEach(flag => {
+        if (!byUser[userId].flags.includes(flag)) {
+          byUser[userId].flags.push(flag);
+        }
+      });
+    });
+
+    // Fetch user details for top suspicious users
+    const topUsers = Object.values(byUser)
+      .sort((a, b) => b.totalSeverity - a.totalSeverity)
+      .slice(0, 20);
+
+    for (let userEntry of topUsers) {
+      const user = await User.findById(userEntry.userId).select('name email phone role');
+      userEntry.user = user;
+      userEntry.avgSeverity = (userEntry.totalSeverity / userEntry.count).toFixed(1);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalSuspicious: suspicious.length,
+        topSuspiciousUsers: topUsers,
+        recentPatterns: suspicious.slice(0, 30)
+      }
+    });
+  } catch (error) {
+    console.error('Get suspicious locations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching suspicious locations'
+    });
+  }
+};

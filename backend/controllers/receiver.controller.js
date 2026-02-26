@@ -5,6 +5,7 @@ const Donor = require('../models/Donor');
 const mlService = require('../services/ml.service');
 const geoService = require('../services/geo.service');
 const AgentController = require('../services/agent/agent.controller');
+const locationTrackingService = require('../services/locationTracking.service');
 
 /**
  * @desc    Create new blood request
@@ -19,35 +20,154 @@ exports.createRequest = async (req, res) => {
       patientName, description
     } = req.body;
 
+    // 🌍 STEP 1: Track location and analyze pattern
+    console.log('🌍 Tracking user location and analyzing patterns...');
+    const { tracking, analysis } = await locationTrackingService.trackRequest(
+      req.user.id,
+      null, // requestId will be set after creation
+      req
+    );
+
+    let suspicionReasons = [];
+    let isSuspicious = false;
+    let suspicionSeverity = 0;
+
+    // Check location-based suspicion
+    if (analysis.isSuspicious) {
+      console.log(`⚠️  Location analysis flagged suspicious activity:`, analysis.flags);
+      isSuspicious = true;
+      suspicionSeverity = analysis.severity;
+      
+      suspicionReasons.push(...analysis.flags.map(flag => {
+        switch(flag) {
+          case 'impossible_travel': return `Impossible travel detected (${analysis.details.distanceFromLastLocation}km in ${analysis.details.timeSinceLastRequest} minutes)`;
+          case 'location_jump': return `Multiple locations in short time (${analysis.details.uniqueLocations} locations)`;
+          case 'rapid_requests': return `Too many requests (${analysis.details.recentRequestCount} in 30 minutes)`;
+          case 'different_ip': return `Different IP address in short time`;
+          default: return flag;
+        }
+      }));
+    }
+
+    // Determine initial status based on location analysis
+    let initialStatus = 'pending';
+    let needsReview = false;
+
+    if (suspicionSeverity >= 70) {
+      // High severity - flag for manual review
+      initialStatus = 'pending';
+      needsReview = true;
+      console.log(`🚩 High severity (${suspicionSeverity}%) - flagging for admin review`);
+    }
+
     // Create the blood request
     const request = await BloodRequest.create({
       receiverId: req.user.id,
       bloodGroup,
       urgency,
       hospitalName,
-      location: {
-        type: 'Point',
-        coordinates: [longitude, latitude]
-      },
-      address,
-      city,
-      state,
-      pincode,
-      contactNumber,
-      unitsRequired,
-      patientName,
-      description,
-      status: 'pending'
+      location: { (enhanced with location analysis)
+ */
+async function analyzeFakeRequest(requestId, userId, location, locationAnalysis) {
+  try {
+    // Extract features
+    const features = await mlService.extractFeatures(userId, location);
+
+    // Call ML API
+    const mlResult = await mlService.analyzeFakeRequest(features);
+
+    // Combine ML prediction with location analysis
+    let finalPrediction = 'genuine';
+    let combinedConfidence = mlResult.confidence || 0;
+    let combinedSeverity = 0;
+
+    // If ML detected fake
+    if (mlResult.prediction === 'fake') {
+      finalPrediction = 'suspicious';
+      combinedSeverity += 50;
+    }
+
+    // If location is suspicious
+    if (locationAnalysis && locationAnalysis.isSuspicious) {
+      combinedSeverity += locationAnalysis.severity;
+      
+      // If BOTH ML and location are suspicious, mark as fake
+      if (mlResult.prediction === 'fake' && locationAnalysis.severity >= 50) {
+        finalPrediction = 'fake';
+      } else if (locationAnalysis.severity >= 70) {
+        finalPrediction = 'suspicious';
+      }
+    }
+
+    combinedSeverity = Math.min(combinedSeverity, 100);
+
+    // Save analysis with combined results
+    await FakeRequestAnalysis.create({
+      requestId,
+      userId,
+      features,
+      mlScore: mlResult.score,
+      prediction: finalPrediction,
+      confidence: mlResult.confidence,
+      locationSuspicious: locationAnalysis?.isSuspicious || false,
+      locationSeverity: locationAnalysis?.severity || 0,
+      locationFlags: locationAnalysis?.flags || [],
+      combinedSeverity: combinedSeverity
     });
 
-    // Run ML analysis asynchronously (don't wait for it)
-    analyzeFakeRequest(request._id, req.user.id, { longitude, latitude })
+    // Update request if fake or highly suspicious
+    const updateData = {
+      mlScore: mlResult.score,
+      mlAnalysisDate: new Date()
+    };
+
+    if (finalPrediction === 'fake' || combinedSeverity >= 80) {
+      updateData.isFake = true;
+      updateData.status = 'flagged';
+      console.log(`🚫 Request ${requestId} marked as FAKE (Combined severity: ${combinedSeverity}%)`);
+    } else if (finalPrediction === 'suspicious' || combinedSeverity >= 50) {
+      updateData.isFake = false;
+      updateData.status = 'review';
+      console.log(`⚠️  Request ${requestId} flagged for REVIEW (Combined severity: ${combinedSeverity}%)`);
+    }
+
+    await BloodRequest.findByIdAndUpdate(requestId, updateData);wait tracking.save();
+
+    // 🤖 STEP 2: Run ML analysis asynchronously (don't wait for it)
+    analyzeFakeRequest(request._id, req.user.id, { longitude, latitude }, analysis)
       .catch(err => console.error('ML Analysis error:', err));
 
-    // 🤖 AGENTIC AI: Process request through intelligent matching system
-    // This runs in the background and doesn't block the response
-    processWithAgentSystem(request, req.app.get('io'))
-      .catch(err => console.error('Agent system error:', err));
+    // 🤖 STEP 3: AGENTIC AI - Process request through intelligent matching system
+    // Only if not flagged as high severity
+    if (!needsReview) {
+      processWithAgentSystem(request, req.app.get('io'))
+        .catch(err => console.error('Agent system error:', err));
+    }
+
+    // Prepare response based on suspicion level
+    if (suspicionSeverity >= 70) {
+      return res.status(200).json({
+        success: true,
+        message: 'Request submitted but flagged for manual review due to unusual activity patterns.',
+        data: request,
+        warning: 'Your request will be reviewed by our admin team before processing.',
+        reasons: suspicionReasons,
+        severity: suspicionSeverity,
+        needsReview: true
+      });
+    }
+
+    if (suspicionSeverity >= 30) {
+      return res.status(200).json({
+        success: true,
+        message: 'Blood request created successfully. Our AI is finding the best donors for you.',
+        data: request,
+        aiProcessing: true,
+        warning: 'We detected some unusual patterns. Your request may undergo additional verification.',
+        reasons: suspicionReasons,
+        severity: suspicionSeverity
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -403,6 +523,51 @@ exports.getStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching stats'
+    });
+  }
+};
+
+/**
+ * @desc    Get location analytics for receiver's requests
+ * @route   GET /api/receiver/location-analytics
+ * @access  Private (Receiver only)
+ */
+exports.getLocationAnalytics = async (req, res) => {
+  try {
+    const RequestTracking = require('../models/RequestTracking');
+    
+    // Get location history for this user
+    const locationHistory = await locationTrackingService.getUserLocationHistory(req.user.id);
+    
+    // Get suspicious requests
+    const suspiciousRequests = await BloodRequest.find({
+      receiverId: req.user.id,
+      locationSuspicious: true
+    }).select('bloodGroup urgency createdAt locationSeverity locationFlags locationDetails status');
+
+    // Calculate stats
+    const totalTracked = locationHistory.length;
+    const suspiciousCount = locationHistory.filter(t => t.suspicionFlags && t.suspicionFlags.length > 0).length;
+    const uniqueCities = [...new Set(locationHistory.map(t => t.location.city).filter(Boolean))];
+    const uniqueIPs = [...new Set(locationHistory.map(t => t.ipAddress).filter(Boolean))];
+
+    res.json({
+      success: true,
+      data: {
+        totalRequests: totalTracked,
+        suspiciousRequests: suspiciousCount,
+        uniqueCities: uniqueCities.length,
+        uniqueIPs: uniqueIPs.length,
+        cities: uniqueCities,
+        recentLocations: locationHistory.slice(0, 10),
+        flaggedRequests: suspiciousRequests
+      }
+    });
+  } catch (error) {
+    console.error('Get location analytics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching location analytics'
     });
   }
 };
