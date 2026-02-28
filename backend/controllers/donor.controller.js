@@ -4,6 +4,8 @@ const DonationHistory = require('../models/DonationHistory');
 const geoService = require('../services/geo.service');
 const AgentController = require('../services/agent/agent.controller');
 const AgentState = require('../models/AgentState');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * @desc    Get or create donor profile
@@ -337,6 +339,122 @@ exports.getStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching statistics'
+    });
+  }
+};
+
+/**
+ * @desc    Download donation certificate
+ * @route   GET /api/donor/certificate/:donationId
+ * @access  Private (Donor only)
+ */
+exports.downloadCertificate = async (req, res) => {
+  try {
+    const donor = await Donor.findOne({ userId: req.user.id });
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donor profile not found'
+      });
+    }
+
+    // Find the donation history record
+    const donation = await DonationHistory.findOne({
+      _id: req.params.donationId,
+      donorId: donor._id
+    });
+
+    if (!donation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donation record not found'
+      });
+    }
+
+    if (!donation.certificatePath) {
+      return res.status(404).json({
+        success: false,
+        message: 'Certificate not yet generated for this donation'
+      });
+    }
+
+    // Check if certificate file exists
+    if (!fs.existsSync(donation.certificatePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Certificate file not found'
+      });
+    }
+
+    // Send file for download
+    const fileName = `LifeLink_Certificate_${donation.certificateNumber}.pdf`;
+    
+    res.download(donation.certificatePath, fileName, (err) => {
+      if (err) {
+        console.error('Certificate download error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: 'Error downloading certificate'
+          });
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Download certificate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error downloading certificate'
+    });
+  }
+};
+
+/**
+ * @desc    Get all certificates for a donor
+ * @route   GET /api/donor/certificates
+ * @access  Private (Donor only)
+ */
+exports.getCertificates = async (req, res) => {
+  try {
+    const donor = await Donor.findOne({ userId: req.user.id });
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donor profile not found'
+      });
+    }
+
+    // Find all donations with certificates
+    const donations = await DonationHistory.find({
+      donorId: donor._id,
+      certificateNumber: { $exists: true, $ne: null }
+    })
+    .select('certificateNumber certificateGeneratedAt bloodGroup unitsGiven hospitalName donationDate')
+    .sort({ donationDate: -1 });
+
+    res.json({
+      success: true,
+      count: donations.length,
+      data: donations.map(d => ({
+        id: d._id,
+        certificateNumber: d.certificateNumber,
+        bloodGroup: d.bloodGroup,
+        unitsGiven: d.unitsGiven,
+        hospitalName: d.hospitalName,
+        donationDate: d.donationDate,
+        generatedAt: d.certificateGeneratedAt,
+        downloadUrl: `/api/donor/certificate/${d._id}`
+      }))
+    });
+
+  } catch (error) {
+    console.error('Get certificates error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching certificates'
     });
   }
 };

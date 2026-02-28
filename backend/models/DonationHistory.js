@@ -65,6 +65,17 @@ const donationHistorySchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
+  },
+  certificateNumber: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  certificatePath: {
+    type: String
+  },
+  certificateGeneratedAt: {
+    type: Date
   }
 }, {
   timestamps: true

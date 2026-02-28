@@ -508,4 +508,159 @@ exports.sendHighSeverityAlert = async (requestData, locationAnalysis, adminEmail
   }
 };
 
+/**
+ * Send donation certificate to donor
+ */
+exports.sendDonationCertificate = async (email, donorName, certificatePath) => {
+  try {
+    const mailOptions = {
+      from: {
+        name: 'LifeLink - Blood Donor Network',
+        address: process.env.EMAIL_FROM || 'noreply@lifelink.com'
+      },
+      to: email,
+      subject: '🎓 Your LifeLink Donation Certificate',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #ffffff;
+            }
+            .header {
+              background: linear-gradient(135deg, #C41E3A 0%, #8B0000 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+            }
+            .content {
+              padding: 30px;
+            }
+            .certificate-icon {
+              text-align: center;
+              font-size: 60px;
+              margin: 20px 0;
+            }
+            .message {
+              background-color: #f8f9fa;
+              border-left: 4px solid #C41E3A;
+              padding: 15px;
+              margin: 20px 0;
+            }
+            .cta-button {
+              display: inline-block;
+              background-color: #C41E3A;
+              color: white;
+              padding: 12px 30px;
+              text-decoration: none;
+              border-radius: 5px;
+              margin: 20px 0;
+            }
+            .footer {
+              background-color: #f8f9fa;
+              padding: 20px;
+              text-align: center;
+              color: #666;
+              font-size: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🩸 LIFELINK</h1>
+              <p style="margin: 5px 0 0 0; font-size: 14px;">Blood Donor Network</p>
+            </div>
+            
+            <div class="content">
+              <div class="certificate-icon">🎓</div>
+              
+              <h2 style="color: #C41E3A; text-align: center;">Congratulations, ${donorName}!</h2>
+              
+              <div class="message">
+                <p style="margin: 0; font-size: 16px;">
+                  <strong>Thank you for your life-saving donation!</strong>
+                </p>
+                <p style="margin-top: 10px;">
+                  Your selfless act of kindness has the power to save lives and bring hope to those in need. 
+                  We are honored to have you as part of the LifeLink community.
+                </p>
+              </div>
+              
+              <p>Your official <strong>Donation Certificate</strong> is attached to this email.</p>
+              
+              <p>You can also download it anytime from your donor dashboard:</p>
+              
+              <div style="text-align: center;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/donor-dashboard" 
+                   class="cta-button">
+                  View Dashboard
+                </a>
+              </div>
+              
+              <div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 0; color: #2e7d32; font-weight: bold;">💚 Your Impact:</p>
+                <p style="margin: 5px 0 0 0; color: #555;">
+                  Every unit of blood you donate can save up to 3 lives. You're a hero!
+                </p>
+              </div>
+              
+              <p>
+                <strong>What's Next?</strong><br>
+                • Share your certificate with friends and family<br>
+                • Remember to maintain your health for future donations<br>
+                • You can donate again after the appropriate waiting period<br>
+                • Keep inspiring others to donate
+              </p>
+              
+              <p style="margin-top: 25px;">
+                With gratitude,<br>
+                <strong>The LifeLink Team</strong>
+              </p>
+            </div>
+            
+            <div class="footer">
+              <p style="margin: 0 0 5px 0; font-style: italic; color: #C41E3A;">
+                "Every Drop Counts, Every Donor Matters"
+              </p>
+              <p>&copy; ${new Date().getFullYear()} LifeLink - Blood Donor Network</p>
+              <p>This is an automated message. Please do not reply to this email.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      attachments: [
+        {
+          filename: 'LifeLink_Donation_Certificate.pdf',
+          path: certificatePath
+        }
+      ]
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Certificate email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending certificate email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = exports;

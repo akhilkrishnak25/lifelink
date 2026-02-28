@@ -9,7 +9,9 @@ const {
   getNearbyRequests,
   acceptRequest,
   getDonationHistory,
-  getStats
+  getStats,
+  downloadCertificate,
+  getCertificates
 } = require('../controllers/donor.controller');
 
 // All routes are protected and donor-only
@@ -24,5 +26,9 @@ router.get('/nearby-requests', getNearbyRequests);
 router.post('/accept-request/:id', acceptRequest);
 router.get('/history', getDonationHistory);
 router.get('/stats', getStats);
+
+// Certificate routes
+router.get('/certificates', getCertificates);
+router.get('/certificate/:donationId', downloadCertificate);
 
 module.exports = router;

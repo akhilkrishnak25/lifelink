@@ -8,6 +8,7 @@ const AgentController = require('../services/agent/agent.controller');
 const locationTrackingService = require('../services/locationTracking.service');
 const emailService = require('../services/email.service');
 const User = require('../models/User');
+const certificateService = require('../services/certificate.service');
 
 /**
  * @desc    Create new blood request
@@ -73,72 +74,24 @@ exports.createRequest = async (req, res) => {
       bloodGroup,
       urgency,
       hospitalName,
-      location: { (enhanced with location analysis)
- */
-async function analyzeFakeRequest(requestId, userId, location, locationAnalysis) {
-  try {
-    // Extract features
-    const features = await mlService.extractFeatures(userId, location);
-
-    // Call ML API
-    const mlResult = await mlService.analyzeFakeRequest(features);
-
-    // Combine ML prediction with location analysis
-    let finalPrediction = 'genuine';
-    let combinedConfidence = mlResult.confidence || 0;
-    let combinedSeverity = 0;
-
-    // If ML detected fake
-    if (mlResult.prediction === 'fake') {
-      finalPrediction = 'suspicious';
-      combinedSeverity += 50;
-    }
-
-    // If location is suspicious
-    if (locationAnalysis && locationAnalysis.isSuspicious) {
-      combinedSeverity += locationAnalysis.severity;
-      
-      // If BOTH ML and location are suspicious, mark as fake
-      if (mlResult.prediction === 'fake' && locationAnalysis.severity >= 50) {
-        finalPrediction = 'fake';
-      } else if (locationAnalysis.severity >= 70) {
-        finalPrediction = 'suspicious';
-      }
-    }
-
-    combinedSeverity = Math.min(combinedSeverity, 100);
-
-    // Save analysis with combined results
-    await FakeRequestAnalysis.create({
-      requestId,
-      userId,
-      features,
-      mlScore: mlResult.score,
-      prediction: finalPrediction,
-      confidence: mlResult.confidence,
-      locationSuspicious: locationAnalysis?.isSuspicious || false,
-      locationSeverity: locationAnalysis?.severity || 0,
-      locationFlags: locationAnalysis?.flags || [],
-      combinedSeverity: combinedSeverity
+      location: {
+        type: 'Point',
+        coordinates: [longitude, latitude]
+      },
+      address,
+      city,
+      state,
+      pincode,
+      contactNumber,
+      unitsRequired,
+      patientName,
+      description,
+      status: initialStatus
     });
 
-    // Update request if fake or highly suspicious
-    const updateData = {
-      mlScore: mlResult.score,
-      mlAnalysisDate: new Date()
-    };
-
-    if (finalPrediction === 'fake' || combinedSeverity >= 80) {
-      updateData.isFake = true;
-      updateData.status = 'flagged';
-      console.log(`🚫 Request ${requestId} marked as FAKE (Combined severity: ${combinedSeverity}%)`);
-    } else if (finalPrediction === 'suspicious' || combinedSeverity >= 50) {
-      updateData.isFake = false;
-      updateData.status = 'review';
-      console.log(`⚠️  Request ${requestId} flagged for REVIEW (Combined severity: ${combinedSeverity}%)`);
-    }
-
-    await BloodRequest.findByIdAndUpdate(requestId, updateData);wait tracking.save();
+    // Update tracking with request ID
+    tracking.requestId = request._id;
+    await tracking.save();
 
     // 🤖 STEP 2: Run ML analysis asynchronously (don't wait for it)
     analyzeFakeRequest(request._id, req.user.id, { longitude, latitude }, analysis)
@@ -423,8 +376,24 @@ exports.completeRequest = async (req, res) => {
     request.completedAt = new Date();
     await request.save();
 
+    // Get donor details for certificate
+    const donor = await Donor.findById(request.acceptedDonorId).populate('userId', 'name email');
+    
+    if (!donor || !donor.userId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donor information not found'
+      });
+    }
+
+    // Generate certificate number
+    const certificateNumber = certificateService.generateCertificateNumber(
+      donor._id,
+      new Date()
+    );
+
     // Create donation history record
-    await DonationHistory.create({
+    const donationHistory = await DonationHistory.create({
       donorId: request.acceptedDonorId,
       requestId: request._id,
       receiverId: req.user.id,
@@ -432,11 +401,42 @@ exports.completeRequest = async (req, res) => {
       hospitalName: request.hospitalName,
       location: request.location,
       unitsGiven: request.unitsRequired,
-      status: 'completed'
+      status: 'completed',
+      certificateNumber
     });
 
+    // Generate certificate asynchronously
+    try {
+      console.log('🎓 Generating donation certificate...');
+      
+      const certificatePath = await certificateService.generateCertificate({
+        donorName: donor.userId.name,
+        donorId: donor._id,
+        bloodGroup: request.bloodGroup,
+        unitsGiven: request.unitsRequired,
+        hospitalName: request.hospitalName,
+        donationDate: new Date(),
+        certificateNumber,
+        city: request.city || 'N/A'
+      });
+
+      // Update donation history with certificate path
+      donationHistory.certificatePath = certificatePath;
+      donationHistory.certificateGeneratedAt = new Date();
+      await donationHistory.save();
+
+      console.log('✅ Certificate generated successfully');
+
+      // Send email with certificate (asynchronously, non-blocking)
+      emailService.sendDonationCertificate(donor.userId.email, donor.userId.name, certificatePath)
+        .catch(err => console.error('Error sending certificate email:', err));
+
+    } catch (certError) {
+      console.error('Certificate generation error:', certError);
+      // Don't block the completion, just log the error
+    }
+
     // Update donor's last donation date and count
-    const donor = await Donor.findById(request.acceptedDonorId);
     if (donor) {
       donor.lastDonationDate = new Date();
       donor.totalDonations += 1;
@@ -445,8 +445,12 @@ exports.completeRequest = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Request marked as completed',
-      data: request
+      message: 'Request marked as completed. Certificate generated successfully!',
+      data: request,
+      certificate: {
+        number: certificateNumber,
+        downloadUrl: `/api/donor/certificate/${donationHistory._id}`
+      }
     });
   } catch (error) {
     console.error('Complete request error:', error);
