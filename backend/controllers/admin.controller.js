@@ -992,3 +992,35 @@ exports.getSuspiciousLocations = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Process unanalyzed blood requests with Agentic AI
+ * @route   POST /api/admin/process-unanalyzed-requests
+ * @access  Private (Admin only)
+ */
+exports.processUnanalyzedRequests = async (req, res) => {
+  try {
+    const AgentController = require('../services/agent/agent.controller');
+    const agentController = new AgentController(req.app.get('io'));
+    
+    console.log('🤖 Admin triggered retroactive AI processing...');
+    const result = await agentController.processUnanalyzedRequests();
+    
+    res.json({
+      success: true,
+      message: result.message,
+      data: {
+        processed: result.processed,
+        failed: result.failed || 0,
+        details: result.details
+      }
+    });
+  } catch (error) {
+    console.error('Process unanalyzed requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing unanalyzed requests'
+    });
+  }
+};
+

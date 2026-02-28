@@ -21,7 +21,8 @@ const {
   exportData,
   getLocationDetections,
   getUserLocationHistory,
-  getSuspiciousLocations
+  getSuspiciousLocations,
+  processUnanalyzedRequests
 } = require('../controllers/admin.controller');
 
 // All routes require authentication
@@ -48,6 +49,9 @@ router.get('/export/:type', authorize('admin', 'super_admin'), exportData);
 router.get('/location-detections', authorize('admin', 'super_admin'), getLocationDetections);
 router.get('/user/:userId/location-history', authorize('admin', 'super_admin'), getUserLocationHistory);
 router.get('/suspicious-locations', authorize('admin', 'super_admin'), getSuspiciousLocations);
+
+// Agentic AI routes
+router.post('/process-unanalyzed-requests', authorize('admin', 'super_admin'), processUnanalyzedRequests);
 
 // Super Admin only routes - Admin approval management
 router.get('/pending-admins', authorizeSuperAdmin, getPendingAdmins);

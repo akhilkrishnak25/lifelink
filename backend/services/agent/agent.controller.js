@@ -430,6 +430,80 @@ class AgentController {
   _sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
+
+  /**
+   * Retroactively process existing blood requests that don't have AgentState
+   * Useful for requests created before agentic AI was enabled or that failed to process
+   */
+  async processUnanalyzedRequests() {
+    try {
+      const BloodRequest = require('../../models/BloodRequest');
+      
+      console.log('\n🔍 Searching for unanalyzed blood requests...');
+      
+      // Get all active requests
+      const activeRequests = await BloodRequest.find({ 
+        status: { $in: ['pending', 'active', 'in-progress'] }
+      });
+      
+      console.log(`   Found ${activeRequests.length} active requests`);
+      
+      const unanalyzedRequests = [];
+      
+      // Check which ones don't have AgentState
+      for (const request of activeRequests) {
+        const agentState = await AgentState.findOne({ requestId: request._id });
+        if (!agentState) {
+          unanalyzedRequests.push(request);
+        }
+      }
+      
+      console.log(`   ${unanalyzedRequests.length} requests need AI analysis`);
+      
+      if (unanalyzedRequests.length === 0) {
+        return { 
+          success: true, 
+          message: 'All active requests have been analyzed',
+          processed: 0
+        };
+      }
+      
+      // Process each unanalyzed request
+      const results = [];
+      for (const request of unanalyzedRequests) {
+        console.log(`\n🤖 Processing request ${request._id}...`);
+        try {
+          const result = await this.processBloodRequest(request);
+          results.push({ requestId: request._id, success: true, result });
+          console.log(`   ✅ Successfully processed request ${request._id}`);
+          
+          // Small delay to avoid overwhelming the system
+          await this._sleep(1000);
+        } catch (error) {
+          console.error(`   ❌ Error processing request ${request._id}:`, error.message);
+          results.push({ requestId: request._id, success: false, error: error.message });
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      console.log(`\n✅ Processed ${successCount}/${unanalyzedRequests.length} requests successfully`);
+      
+      return {
+        success: true,
+        message: `Processed ${successCount}/${unanalyzedRequests.length} unanalyzed requests`,
+        processed: successCount,
+        failed: unanalyzedRequests.length - successCount,
+        details: results
+      };
+    } catch (error) {
+      console.error('Error processing unanalyzed requests:', error);
+      return {
+        success: false,
+        message: error.message,
+        processed: 0
+      };
+    }
+  }
 }
 
 module.exports = AgentController;

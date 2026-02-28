@@ -3,6 +3,7 @@ const BloodRequest = require('../models/BloodRequest');
 const DonationHistory = require('../models/DonationHistory');
 const geoService = require('../services/geo.service');
 const AgentController = require('../services/agent/agent.controller');
+const AgentState = require('../models/AgentState');
 
 /**
  * @desc    Get or create donor profile
@@ -210,12 +211,36 @@ exports.acceptRequest = async (req, res) => {
 
     await request.save();
 
-    // 🤖 AGENTIC AI: Record donor response for learning
+    // 🤖 AGENTIC AI: Check if agent state exists, if not trigger AI processing
     try {
-      const agentController = new AgentController(req.app.get('io'));
-      await agentController.handleDonorResponse(request._id, donor._id, true);
+      const io = req.app.get('io');
+      const agentController = new AgentController(io);
+      
+      // Check if this request has been analyzed by AI
+      const agentState = await AgentState.findOne({ requestId: request._id });
+      
+      if (!agentState) {
+        // No AI analysis exists - trigger full agentic AI processing
+        console.log(`🤖 No AI analysis found for request ${request._id}, triggering now...`);
+        
+        // Populate request data for AI processing
+        const populatedRequest = await BloodRequest.findById(request._id);
+        
+        // Process through agentic AI system asynchronously
+        agentController.processBloodRequest(populatedRequest)
+          .then(result => {
+            console.log(`✅ Agentic AI processing completed for request ${request._id}`);
+            
+            // Now record the donor response
+            return agentController.handleDonorResponse(request._id, donor._id, true);
+          })
+          .catch(err => console.error('Agentic AI processing error:', err));
+      } else {
+        // Agent state exists - just record the donor response
+        await agentController.handleDonorResponse(request._id, donor._id, true);
+      }
     } catch (agentError) {
-      console.error('Agent learning error:', agentError);
+      console.error('Agent system error:', agentError);
       // Don't block the response
     }
 
