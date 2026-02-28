@@ -14,7 +14,9 @@ const LearningService = require('./learning.service');
 class AgentController {
   constructor(io) {
     this.io = io; // Socket.IO instance
-    this.mlApiUrl = process.env.ML_API_URL || 'http://localhost:5001';
+    // Support both ML_API_URL and ML_SERVICE_URL for backward compatibility
+    this.mlApiUrl = process.env.ML_API_URL || process.env.ML_SERVICE_URL || 'http://localhost:5001';
+    console.log('🤖 AgentController initialized with ML API:', this.mlApiUrl);
     
     // Initialize all subsystems
     this.observer = new Observer();
@@ -162,6 +164,9 @@ class AgentController {
     }
 
     try {
+      console.log(`🤖 Calling ML API: ${this.mlApiUrl}/score-donors`);
+      console.log(`   Donors to score: ${donorData.length}`);
+      
       // Score donors via ML service
       const scoringResponse = await axios.post(`${this.mlApiUrl}/score-donors`, {
         donors: donorData,
@@ -171,9 +176,10 @@ class AgentController {
           location: requestContext.location,
           units_required: requestContext.unitsRequired
         }
-      }, { timeout: 5000 });
+      }, { timeout: 10000 }); // Increased timeout to 10s
 
       const scoredDonors = scoringResponse.data.scored_donors || [];
+      console.log(`✅ ML API scored ${scoredDonors.length} donors`);
 
       // Convert ML format to our format
       const rankedDonors = scoredDonors.map(donor => ({
@@ -211,7 +217,15 @@ class AgentController {
       };
 
     } catch (error) {
-      console.error('ML service error, using rule-based fallback:', error.message);
+      console.error('❌ ML service error:', error.message);
+      if (error.code === 'ECONNREFUSED') {
+        console.error('   ML service is not reachable at:', this.mlApiUrl);
+      } else if (error.response) {
+        console.error('   ML service returned error:', error.response.status, error.response.data);
+      } else if (error.request) {
+        console.error('   No response from ML service (timeout or network error)');
+      }
+      console.log('🔄 Falling back to rule-based decision...');
       
       // Rule-based fallback
       return this._ruleBasedDecision(donorData, requestContext);

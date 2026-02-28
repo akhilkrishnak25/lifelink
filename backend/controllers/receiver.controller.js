@@ -100,8 +100,14 @@ exports.createRequest = async (req, res) => {
     // 🤖 STEP 3: AGENTIC AI - Process request through intelligent matching system
     // Only if not flagged as high severity
     if (!needsReview) {
+      console.log(`🤖 Triggering Agentic AI for request ${request._id}, urgency: ${request.urgency}`);
       processWithAgentSystem(request, req.app.get('io'))
-        .catch(err => console.error('Agent system error:', err));
+        .catch(err => {
+          console.error('❌ Agent system error:', err);
+          console.error('Error stack:', err.stack);
+        });
+    } else {
+      console.log(`⚠️  Request ${request._id} flagged for review, skipping AI processing`);
     }
 
     // Prepare response based on suspicion level
@@ -589,6 +595,11 @@ exports.getLocationAnalytics = async (req, res) => {
  */
 async function processWithAgentSystem(requestData, io) {
   try {
+    console.log(`\n🚀 ===== STARTING AGENTIC AI PROCESSING =====`);
+    console.log(`Request ID: ${requestData._id}`);
+    console.log(`Blood Type: ${requestData.bloodGroup}, Urgency: ${requestData.urgency}`);
+    console.log(`Location: ${requestData.city || 'N/A'}`);
+    
     // Wait a moment to ensure request is fully saved
     await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -596,6 +607,7 @@ async function processWithAgentSystem(requestData, io) {
     const result = await agentController.processBloodRequest(requestData);
 
     console.log('✅ Agent system processing result:', result);
+    console.log(`===== AGENTIC AI PROCESSING COMPLETE =====\n`);
 
     // Notify receiver that AI processing is complete
     if (io && result.success) {
@@ -608,7 +620,11 @@ async function processWithAgentSystem(requestData, io) {
     }
 
   } catch (error) {
-    console.error('Agent system processing error:', error);
+    console.error('\n❌ ===== AGENT SYSTEM PROCESSING ERROR =====');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Request ID:', requestData._id);
+    console.error('===== ERROR END =====\n');
     // Don't throw - let the system continue with manual matching
   }
 }

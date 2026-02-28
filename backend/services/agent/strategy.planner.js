@@ -8,7 +8,8 @@ const axios = require('axios');
 
 class StrategyPlanner {
   constructor() {
-    this.mlApiUrl = process.env.ML_API_URL || 'http://localhost:5001';
+    // Support both ML_API_URL and ML_SERVICE_URL for backward compatibility
+    this.mlApiUrl = process.env.ML_API_URL || process.env.ML_SERVICE_URL || 'http://localhost:5001';
   }
 
   /**
