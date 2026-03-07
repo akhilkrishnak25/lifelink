@@ -147,10 +147,22 @@ exports.getNearbyRequests = async (req, res) => {
       req.user.id
     );
 
+    // Add donor's response status to each request
+    const requestsWithStatus = requests.map(request => {
+      const donorResponse = request.interestedDonors?.find(
+        d => d.donorId.toString() === donor._id.toString()
+      );
+      
+      return {
+        ...request,
+        donorStatus: donorResponse ? donorResponse.status : null
+      };
+    });
+
     res.json({
       success: true,
-      count: requests.length,
-      data: requests
+      count: requestsWithStatus.length,
+      data: requestsWithStatus
     });
   } catch (error) {
     console.error('Get nearby requests error:', error);

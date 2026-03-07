@@ -228,4 +228,29 @@ agentStateSchema.methods.calculatePerformance = function() {
   return { responseRate, avgResponseTime };
 };
 
+// Virtual fields for easy access (for dashboard/API)
+agentStateSchema.virtual('phase').get(function() {
+  return this.execution?.status || 'initialized';
+});
+
+agentStateSchema.virtual('strategy').get(function() {
+  return this.decision?.strategyType || 'pending';
+});
+
+agentStateSchema.virtual('donorsAnalyzed').get(function() {
+  return this.decision?.rankedDonors?.length || 0;
+});
+
+agentStateSchema.virtual('donorsNotified').get(function() {
+  return this.execution?.notificationsSent || 0;
+});
+
+agentStateSchema.virtual('actionsTaken').get(function() {
+  return this.execution?.actions?.length || 0;
+});
+
+// Ensure virtuals are serialized
+agentStateSchema.set('toJSON', { virtuals: true });
+agentStateSchema.set('toObject', { virtuals: true });
+
 module.exports = mongoose.model('AgentState', agentStateSchema);
