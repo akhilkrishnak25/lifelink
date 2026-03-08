@@ -3,6 +3,18 @@
 const API_BASE_URL = 'https://lifelink-dmvb.onrender.com';
 
 /**
+ * Fetch with timeout
+ */
+function fetchWithTimeout(url, options, timeout = 30000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout. The server is taking too long to respond.')), timeout)
+    )
+  ]);
+}
+
+/**
  * Make API request with authentication
  */
 async function apiRequest(endpoint, method = 'GET', data = null) {
@@ -24,16 +36,59 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-    const result = await response.json();
+    console.log(`[API] ${method} ${endpoint}`, data ? data : '');
+    const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, options, 30000);
+    
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    let result;
+    
+    if (contentType && contentType.includes('application/json')) {
+      result = await response.json();
+    } else {
+      // Handle non-JSON responses (e.g., rate limit plain text, HTML error pages)
+      const text = await response.text();
+      console.warn(`[API] Non-JSON response (${response.status}):`, text);
+      result = {
+        success: false,
+        message: text || 'Server returned an unexpected response'
+      };
+    }
+    
+    console.log(`[API] Response:`, result);
 
     if (!response.ok) {
-      throw new Error(result.message || 'Request failed');
+      // Preserve error code and details from backend
+      const error = new Error(result.message || 'Request failed');
+      error.code = result.code;
+      error.reason = result.reason;
+      error.userId = result.userId;
+      
+      // Handle specific status codes
+      if (response.status === 429) {
+        error.message = result.message || 'Too many requests. Please wait a moment before trying again.';
+      } else if (response.status === 500) {
+        error.message = result.message || 'Server error. The database may be temporarily unavailable. Please try again later.';
+      } else if (response.status === 401) {
+        error.message = result.message || 'Invalid credentials. Please check your email and password.';
+      } else if (response.status === 403) {
+        // Preserve 403 errors as-is (email verification, admin approval, etc.)
+        error.message = result.message;
+      } else if (response.status === 400) {
+        error.message = result.message || 'Invalid request. Please check your input.';
+      }
+      
+      throw error;
     }
 
     return result;
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('[API] Error:', error);
+    // Check for network errors
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      const networkError = new Error('Unable to connect to server. Please check your internet connection or try again later.');
+      throw networkError;
+    }
     throw error;
   }
 }

@@ -41,7 +41,23 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
   try {
     console.log(`[API] ${method} ${endpoint}`, data ? data : '');
     const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, options, 30000);
-    const result = await response.json();
+    
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    let result;
+    
+    if (contentType && contentType.includes('application/json')) {
+      result = await response.json();
+    } else {
+      // Handle non-JSON responses (e.g., rate limit plain text, HTML error pages)
+      const text = await response.text();
+      console.warn(`[API] Non-JSON response (${response.status}):`, text);
+      result = {
+        success: false,
+        message: text || 'Server returned an unexpected response'
+      };
+    }
+    
     console.log(`[API] Response:`, result);
 
     if (!response.ok) {
@@ -52,7 +68,9 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
       error.userId = result.userId;
       
       // Handle specific status codes
-      if (response.status === 500) {
+      if (response.status === 429) {
+        error.message = result.message || 'Too many requests. Please wait a moment before trying again.';
+      } else if (response.status === 500) {
         error.message = result.message || 'Server error. The database may be temporarily unavailable. Please try again later.';
       } else if (response.status === 401) {
         error.message = result.message || 'Invalid credentials. Please check your email and password.';
