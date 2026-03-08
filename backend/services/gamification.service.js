@@ -194,6 +194,72 @@ exports.awardAchievement = async (userId, achievementType) => {
 };
 
 /**
+ * Handle donation completion - Award points and update profile
+ * Call this when a donation is marked as completed
+ */
+exports.handleDonationComplete = async (donorId, donationData = {}) => {
+  try {
+    const DonationHistory = require('../models/DonationHistory');
+    
+    // Get or create profile
+    const profile = await this.getProfile(donorId);
+    
+    // Award 100 points for the donation
+    const pointsAwarded = 100;
+    await this.addPoints(donorId, pointsAwarded, 'Blood donation completed');
+    
+    // Get total donation count for this donor
+    const totalDonations = await DonationHistory.countDocuments({
+      donorId,
+      status: 'completed'
+    });
+    
+    // Update profile stats
+    profile.totalDonations = totalDonations;
+    profile.lastDonation = donationData.donatedAt || new Date();
+    await profile.save();
+    
+    // Check for achievements
+    const achievements = [];
+    
+    // First donation achievement
+    if (totalDonations === 1) {
+      const achievement = await this.unlockAchievement(donorId, 'first_donation');
+      if (achievement) achievements.push(achievement);
+    }
+    
+    // Hero (5 donations)
+    if (totalDonations === 5) {
+      const achievement = await this.unlockAchievement(donorId, 'hero');
+      if (achievement) achievements.push(achievement);
+    }
+    
+    // Lifesaver (10 donations)
+    if (totalDonations === 10) {
+      const achievement = await this.unlockAchievement(donorId, 'lifesaver');
+      if (achievement) achievements.push(achievement);
+    }
+    
+    // Champion (25 donations)
+    if (totalDonations === 25) {
+      const achievement = await this.unlockAchievement(donorId, 'champion');
+      if (achievement) achievements.push(achievement);
+    }
+    
+    return {
+      pointsAwarded,
+      totalPoints: profile.points,
+      totalDonations,
+      level: profile.level,
+      achievements
+    };
+  } catch (error) {
+    console.error('Error handling donation completion:', error);
+    throw error;
+  }
+};
+
+/**
  * Get leaderboard - includes all users with donation history
  */
 exports.getLeaderboard = async (limit = 100, filter = {}) => {
