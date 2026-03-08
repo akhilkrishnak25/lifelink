@@ -448,4 +448,60 @@ router.post('/admin/sync-points', async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/gamification/admin/diagnostics
+ * @desc    Get detailed database statistics for debugging
+ * @access  Public (for testing)
+ */
+router.get('/admin/diagnostics', async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const Donor = require('../models/Donor');
+    const DonationHistory = require('../models/DonationHistory');
+    
+    // Count documents
+    const totalDonors = await Donor.countDocuments();
+    const totalDonorUsers = await User.countDocuments({ role: 'donor' });
+    const totalGamificationProfiles = await Gamification.countDocuments();
+    const totalDonations = await DonationHistory.countDocuments({ status: 'completed' });
+    
+    // Find donors without gamification profiles
+    const allDonors = await Donor.find().populate('userId', 'name').lean();
+    const gamificationUserIds = await Gamification.find().distinct('userId');
+    const gamificationUserIdSet = new Set(gamificationUserIds.map(id => id.toString()));
+    
+    const donorsWithProfiles = [];
+    const donorsWithoutProfiles = [];
+    
+    for (const donor of allDonors) {
+      if (!donor.userId) continue;
+      const userId = donor.userId._id.toString();
+      
+      if (gamificationUserIdSet.has(userId)) {
+        donorsWithProfiles.push({ name: donor.userId.name, city: donor.city });
+      } else {
+        donorsWithoutProfiles.push({ name: donor.userId.name, city: donor.city });
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        counts: {
+          totalDonorRecords: totalDonors,
+          totalDonorUsers: totalDonorUsers,
+          totalGamificationProfiles: totalGamificationProfiles,
+          totalCompletedDonations: totalDonations,
+          donorsWithProfiles: donorsWithProfiles.length,
+          donorsWithoutProfiles: donorsWithoutProfiles.length
+        },
+        donorsWithoutProfiles: donorsWithoutProfiles.slice(0, 10), // First 10
+        donorsWithProfiles: donorsWithProfiles.slice(0, 10) // First 10
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
