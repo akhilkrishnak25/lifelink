@@ -93,6 +93,7 @@ async function handleRegister(event) {
   const email = document.getElementById('email').value.trim();
   const phone = document.getElementById('phone').value.trim();
   const password = document.getElementById('password').value;
+  const confirmPassword = document.getElementById('confirmPassword')?.value || '';
   const role = document.getElementById('role').value;
 
   // Validation
@@ -113,6 +114,11 @@ async function handleRegister(event) {
 
   if (password.length < 8) {
     showAlert('Password must be at least 8 characters', 'danger');
+    return;
+  }
+
+  if (confirmPassword && password !== confirmPassword) {
+    showAlert('Passwords do not match', 'danger');
     return;
   }
 
