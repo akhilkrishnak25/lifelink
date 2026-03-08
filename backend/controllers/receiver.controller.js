@@ -9,6 +9,7 @@ const locationTrackingService = require('../services/locationTracking.service');
 const emailService = require('../services/email.service');
 const User = require('../models/User');
 const certificateService = require('../services/certificate.service');
+const gamificationService = require('../services/gamification.service');
 
 /**
  * @desc    Create new blood request
@@ -448,6 +449,20 @@ exports.completeRequest = async (req, res) => {
       donor.lastDonationDate = new Date();
       donor.totalDonations += 1;
       await donor.save();
+    }
+
+    // 🎮 Update gamification: award points, update stats, unlock achievements
+    try {
+      console.log('🎮 Updating gamification for donation...');
+      await gamificationService.handleDonationComplete(donor.userId._id, {
+        donationDate: donationHistory.donationDate || new Date(),
+        bloodGroup: donationHistory.bloodGroup,
+        unitsGiven: donationHistory.unitsGiven
+      });
+      console.log('✅ Gamification updated: +100 points awarded');
+    } catch (gamError) {
+      // Don't block the donation completion if gamification fails
+      console.error('⚠️ Gamification update error:', gamError.message);
     }
 
     res.json({
