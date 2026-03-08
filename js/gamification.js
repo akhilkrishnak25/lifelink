@@ -15,10 +15,13 @@ class GamificationClient {
           'Authorization': `Bearer ${this.token}`
         }
       });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       return await response.json();
     } catch (error) {
       console.error('Error fetching gamification profile:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -26,10 +29,13 @@ class GamificationClient {
   async getLeaderboard(limit = 100) {
     try {
       const response = await fetch(`${this.apiUrl}/api/gamification/leaderboard?limit=${limit}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       return await response.json();
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
-      return null;
+      throw error;
     }
   }
 

@@ -60,11 +60,16 @@
   <script src="js/gamification.js"></script>
   <script src="js/sidebar.js"></script>
   <script>
-    const client = new GamificationClient('http://localhost:5000');
+    const client = new GamificationClient();
 
     async function load() {
       try {
-        const profile = await client.getProfile();
+        const profileResponse = await client.getProfile();
+        if (!profileResponse || !profileResponse.success) {
+          throw new Error('Failed to fetch profile');
+        }
+        const profile = profileResponse.data;
+        
         document.getElementById('gBox').innerHTML = `
           <p><strong>Points:</strong> ${profile.points ?? 0}</p>
           <p><strong>Level:</strong> ${profile.level ?? 1}</p>
@@ -72,8 +77,17 @@
           <p><strong>Reliability:</strong> ${profile.reliabilityScore ?? 0}</p>
         `;
 
-        const lb = await client.getLeaderboard();
-        const rows = (lb || []).slice(0, 10).map((u, idx) => `<tr><td>${idx + 1}</td><td>${u.name || 'User'}</td><td>${u.points || 0}</td></tr>`).join('');
+        const lbResponse = await client.getLeaderboard();
+        if (!lbResponse || !lbResponse.success) {
+          throw new Error('Failed to fetch leaderboard');
+        }
+        const leaderboard = lbResponse.data || [];
+        
+        const rows = leaderboard.slice(0, 10).map((u) => {
+          const userName = u.userId?.name || u.name || 'User';
+          return `<tr><td>${u.rank}</td><td>${userName}</td><td>${u.points || 0}</td></tr>`;
+        }).join('');
+        
         document.getElementById('lBox').innerHTML = `
           <table style="width:100%; border-collapse: collapse;">
             <thead><tr><th>#</th><th>Name</th><th>Points</th></tr></thead>
@@ -81,6 +95,7 @@
           </table>
         `;
       } catch (e) {
+        console.error('Gamification error:', e);
         document.getElementById('gBox').textContent = 'Gamification API not reachable yet.';
         document.getElementById('lBox').textContent = 'Leaderboard not reachable yet.';
       }
