@@ -376,6 +376,35 @@ exports.getLeaderboard = async (limit = 100, filter = {}) => {
     }
   }
   
+  // NEW: Add ALL remaining donors (even with 0 donations and no gamification profile)
+  // This ensures all 27 donors appear in the leaderboard
+  const userIdsAlreadyIncluded = new Set(
+    leaderboardData.map(entry => entry.userId._id.toString())
+  );
+  
+  const allDonors = await Donor.find().populate('userId', 'name').select('city state bloodGroup userId').lean();
+  
+  for (const donor of allDonors) {
+    if (donor.userId && !userIdsAlreadyIncluded.has(donor.userId._id.toString())) {
+      // This donor has no gamification profile and no donations yet
+      leaderboardData.push({
+        userId: {
+          _id: donor.userId._id,
+          name: donor.userId.name,
+          city: donor.city || 'N/A',
+          state: donor.state || 'N/A',
+          bloodType: donor.bloodGroup || 'N/A'
+        },
+        points: 0,
+        level: 1,
+        donationCount: 0,
+        lastDonation: null,
+        reliabilityScore: 0,
+        badges: []
+      });
+    }
+  }
+  
   // Sort by points (descending) and limit
   leaderboardData.sort((a, b) => (b.points || 0) - (a.points || 0));
   const limitedData = leaderboardData.slice(0, limit);
