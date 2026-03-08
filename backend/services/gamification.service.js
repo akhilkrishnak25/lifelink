@@ -265,6 +265,7 @@ exports.handleDonationComplete = async (donorId, donationData = {}) => {
 exports.getLeaderboard = async (limit = 100, filter = {}) => {
   const DonationHistory = require('../models/DonationHistory');
   const User = require('../models/User');
+  const Donor = require('../models/Donor');
   
   // Get all users with donations
   const donationStats = await DonationHistory.aggregate([
@@ -289,7 +290,7 @@ exports.getLeaderboard = async (limit = 100, filter = {}) => {
   
   // Get all gamification profiles
   const gamificationProfiles = await Gamification.find(filter)
-    .populate('userId', 'name city state bloodType')
+    .populate('userId', 'name')
     .lean();
   
   // Merge data: gamification profiles + users with donations but no profile yet
@@ -300,13 +301,22 @@ exports.getLeaderboard = async (limit = 100, filter = {}) => {
   const leaderboardData = [];
   
   // Add users with gamification profiles
-  gamificationProfiles.forEach(profile => {
+  for (const profile of gamificationProfiles) {
     if (profile.userId) {
       const userId = profile.userId._id.toString();
       const donations = donationMap[userId] || { donationCount: 0 };
       
+      // Fetch donor info for city and blood group
+      const donorInfo = await Donor.findOne({ userId: userId }).select('city state bloodGroup').lean();
+      
       leaderboardData.push({
-        userId: profile.userId,
+        userId: {
+          _id: profile.userId._id,
+          name: profile.userId.name,
+          city: donorInfo?.city || 'N/A',
+          state: donorInfo?.state || 'N/A',
+          bloodType: donorInfo?.bloodGroup || 'N/A'
+        },
         points: profile.points || 0,
         level: profile.level || 1,
         donationCount: donations.donationCount,
@@ -315,18 +325,26 @@ exports.getLeaderboard = async (limit = 100, filter = {}) => {
         badges: profile.badges || []
       });
     }
-  });
+  }
   
   // Add users with donations but no gamification profile
   for (const [userId, stats] of Object.entries(donationMap)) {
     if (!userIdsWithGamification.has(userId)) {
-      const user = await User.findById(userId).select('name city state bloodType').lean();
+      const user = await User.findById(userId).select('name').lean();
+      const donorInfo = await Donor.findOne({ userId: userId }).select('city state bloodGroup').lean();
+      
       if (user) {
         // Award points based on donation count (100 points per donation)
         const calculatedPoints = stats.donationCount * 100;
         
         leaderboardData.push({
-          userId: user,
+          userId: {
+            _id: user._id,
+            name: user.name,
+            city: donorInfo?.city || 'N/A',
+            state: donorInfo?.state || 'N/A',
+            bloodType: donorInfo?.bloodGroup || 'N/A'
+          },
           points: calculatedPoints,
           level: Math.floor(calculatedPoints / 1000) + 1,
           donationCount: stats.donationCount,
