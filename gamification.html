@@ -7,6 +7,27 @@
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/dark-mode.css" />
   <link rel="stylesheet" href="css/sidebar.css" />
+  <style>
+    .leaderboard-table tbody tr {
+      transition: background-color 0.2s ease;
+    }
+    .leaderboard-table tbody tr:hover {
+      background-color: #f1f3f5 !important;
+    }
+    .leaderboard-table tbody tr td {
+      padding: 12px 8px;
+      border: 1px solid #dee2e6;
+    }
+    @media (max-width: 768px) {
+      .leaderboard-table {
+        font-size: 0.85rem;
+      }
+      .leaderboard-table th,
+      .leaderboard-table td {
+        padding: 8px 4px;
+      }
+    }
+  </style>
 </head>
 <body>
   <script src="js/session.js"></script>
@@ -71,33 +92,91 @@
         const profile = profileResponse.data;
         
         document.getElementById('gBox').innerHTML = `
-          <p><strong>Points:</strong> ${profile.points ?? 0}</p>
-          <p><strong>Level:</strong> ${profile.level ?? 1}</p>
-          <p><strong>Badges:</strong> ${(profile.badges || []).length}</p>
-          <p><strong>Reliability:</strong> ${profile.reliabilityScore ?? 0}</p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div style="padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+              <div style="font-size: 2rem; font-weight: bold; color: #28a745;">${profile.points ?? 0}</div>
+              <div style="color: #6c757d; margin-top: 0.25rem;">Points</div>
+            </div>
+            <div style="padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+              <div style="font-size: 2rem; font-weight: bold; color: #007bff;">${profile.level ?? 1}</div>
+              <div style="color: #6c757d; margin-top: 0.25rem;">Level</div>
+            </div>
+            <div style="padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+              <div style="font-size: 2rem; font-weight: bold; color: #ffc107;">${(profile.badges || []).length}</div>
+              <div style="color: #6c757d; margin-top: 0.25rem;">Badges</div>
+            </div>
+            <div style="padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+              <div style="font-size: 2rem; font-weight: bold; color: #17a2b8;">${profile.reliabilityScore ?? 0}%</div>
+              <div style="color: #6c757d; margin-top: 0.25rem;">Reliability</div>
+            </div>
+          </div>
         `;
 
-        const lbResponse = await client.getLeaderboard();
+        const lbResponse = await client.getLeaderboard(50);
         if (!lbResponse || !lbResponse.success) {
           throw new Error('Failed to fetch leaderboard');
         }
         const leaderboard = lbResponse.data || [];
         
-        const rows = leaderboard.slice(0, 10).map((u) => {
-          const userName = u.userId?.name || u.name || 'User';
-          return `<tr><td>${u.rank}</td><td>${userName}</td><td>${u.points || 0}</td></tr>`;
+        if (leaderboard.length === 0) {
+          document.getElementById('lBox').innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No donors in leaderboard yet. Be the first to donate!</p>';
+          return;
+        }
+        
+        const rows = leaderboard.map((u, idx) => {
+          const userName = u.userId?.name || 'Anonymous Donor';
+          const city = u.userId?.city || '-';
+          const bloodType = u.userId?.bloodType || '-';
+          const points = u.points || 0;
+          const donations = u.donationCount || 0;
+          const level = u.level || 1;
+          
+          // Medal for top 3
+          let medal = '';
+          if (idx === 0) medal = '🥇';
+          else if (idx === 1) medal = '🥈';
+          else if (idx === 2) medal = '🥉';
+          
+          return `
+            <tr style="${idx < 3 ? 'background: #fff3cd;' : ''}">
+              <td style="text-align: center; font-weight: bold;">${medal} ${u.rank}</td>
+              <td style="font-weight: 500;">${userName}</td>
+              <td style="text-align: center;">${city}</td>
+              <td style="text-align: center;"><span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">${bloodType}</span></td>
+              <td style="text-align: center; font-weight: bold; color: #28a745;">${points}</td>
+              <td style="text-align: center;">${donations}</td>
+              <td style="text-align: center;"><span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem;">Lvl ${level}</span></td>
+            </tr>
+          `;
         }).join('');
         
         document.getElementById('lBox').innerHTML = `
-          <table style="width:100%; border-collapse: collapse;">
-            <thead><tr><th>#</th><th>Name</th><th>Points</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="3">No data</td></tr>'}</tbody>
-          </table>
+          <div style="overflow-x: auto;">
+            <table class="leaderboard-table" style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
+              <thead>
+                <tr style="background: #343a40; color: white;">
+                  <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Rank</th>
+                  <th style="padding: 12px 8px; text-align: left; border: 1px solid #dee2e6;">Donor Name</th>
+                  <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">City</th>
+                  <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Blood Type</th>
+                  <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Points</th>
+                  <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Donations</th>
+                  <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Level</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top: 1rem; padding: 0.75rem; background: #e9ecef; border-radius: 4px; text-align: center; color: #495057;">
+            <strong>Total Donors:</strong> ${leaderboard.length} heroes saving lives! 🩸
+          </div>
         `;
       } catch (e) {
         console.error('Gamification error:', e);
-        document.getElementById('gBox').textContent = 'Gamification API not reachable yet.';
-        document.getElementById('lBox').textContent = 'Leaderboard not reachable yet.';
+        document.getElementById('gBox').innerHTML = '<p style="color: #dc3545; padding: 1rem;">Gamification API not reachable yet.</p>';
+        document.getElementById('lBox').innerHTML = '<p style="color: #dc3545; padding: 1rem;">Leaderboard not reachable yet.</p>';
       }
     }
 
