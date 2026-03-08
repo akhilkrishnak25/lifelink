@@ -1,7 +1,9 @@
 // Analytics Dashboard using Chart.js
 class AnalyticsDashboard {
   constructor() {
-    this.apiUrl = localStorage.getItem('API_URL') || 'http://localhost:5000';
+    this.apiUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:5000'
+      : 'https://lifelink-dmvb.onrender.com';
     this.token = localStorage.getItem('token');
     this.charts = {};
   }

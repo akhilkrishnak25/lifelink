@@ -8,7 +8,9 @@ class NotificationService {
 
   // Initialize socket connection
   init(userId) {
-    const API_URL = localStorage.getItem('API_URL') || 'http://localhost:5000';
+    const API_URL = window.location.hostname === 'localhost' 
+      ? 'http://localhost:5000'
+      : 'https://lifelink-dmvb.onrender.com';
     
     this.socket = io(API_URL, {
       transports: ['websocket', 'polling'],
