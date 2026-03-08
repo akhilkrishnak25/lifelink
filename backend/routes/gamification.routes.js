@@ -374,4 +374,78 @@ function getAchievementProgress(type, profile) {
   return progress;
 }
 
+/**
+ * @route   POST /api/gamification/admin/sync-points
+ * @desc    Sync all gamification points with actual donation counts (Admin only)
+ * @access  Public (temporary for debugging)
+ */
+router.post('/admin/sync-points', async (req, res) => {
+  try {
+    const DonationHistory = require('../models/DonationHistory');
+    const Donor = require('../models/Donor');
+    
+    // Get all gamification profiles
+    const profiles = await Gamification.find().populate('userId', 'name');
+    
+    const results = {
+      checked: 0,
+      updated: 0,
+      details: []
+    };
+    
+    for (const profile of profiles) {
+      if (!profile.userId) continue;
+      
+      results.checked++;
+      const userId = profile.userId._id;
+      const userName = profile.userId.name;
+      
+      // Find the donor record
+      const donor = await Donor.findOne({ userId: userId });
+      
+      let actualDonationCount = 0;
+      
+      if (donor) {
+        // Count actual completed donations
+        actualDonationCount = await DonationHistory.countDocuments({
+          donorId: donor._id,
+          status: 'completed'
+        });
+      }
+      
+      // Calculate correct points (100 per donation)
+      const correctPoints = actualDonationCount * 100;
+      const correctLevel = Math.floor(correctPoints / 1000) + 1;
+      
+      const oldPoints = profile.points || 0;
+      
+      // Update the profile
+      profile.points = correctPoints;
+      profile.level = correctLevel;
+      profile.totalDonations = actualDonationCount;
+      
+      await profile.save();
+      
+      if (oldPoints !== correctPoints) {
+        results.updated++;
+        results.details.push({
+          user: userName,
+          donations: actualDonationCount,
+          oldPoints: oldPoints,
+          newPoints: correctPoints,
+          level: correctLevel
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Gamification points synced with actual donation counts',
+      data: results
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
