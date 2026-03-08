@@ -196,27 +196,38 @@ exports.awardAchievement = async (userId, achievementType) => {
 /**
  * Handle donation completion - Award points and update profile
  * Call this when a donation is marked as completed
+ * @param {String} userId - The User ID (not Donor ID)
+ * @param {Object} donationData - Optional donation metadata
  */
-exports.handleDonationComplete = async (donorId, donationData = {}) => {
+exports.handleDonationComplete = async (userId, donationData = {}) => {
   try {
     const DonationHistory = require('../models/DonationHistory');
+    const Donor = require('../models/Donor');
     
-    // Get or create profile
-    const profile = await this.getProfile(donorId);
+    // IMPORTANT: DonationHistory uses Donor._id, not User._id
+    // First, find the Donor record for this user
+    const donor = await Donor.findOne({ userId: userId });
+    if (!donor) {
+      console.warn(`No donor record found for user ${userId}`);
+      return null;
+    }
+    
+    // Get or create gamification profile (uses userId)
+    const profile = await this.getProfile(userId);
     
     // Award 100 points for the donation
     const pointsAwarded = 100;
-    await this.addPoints(donorId, pointsAwarded, 'Blood donation completed');
+    await this.addPoints(userId, pointsAwarded, 'Blood donation completed');
     
-    // Get total donation count for this donor
+    // Get total donation count for this donor using Donor._id
     const totalDonations = await DonationHistory.countDocuments({
-      donorId,
+      donorId: donor._id,
       status: 'completed'
     });
     
     // Update profile stats
     profile.totalDonations = totalDonations;
-    profile.lastDonation = donationData.donatedAt || new Date();
+    profile.lastDonation = donationData.donatedAt || donationData.donationDate || new Date();
     await profile.save();
     
     // Check for achievements
@@ -224,25 +235,25 @@ exports.handleDonationComplete = async (donorId, donationData = {}) => {
     
     // First donation achievement
     if (totalDonations === 1) {
-      const achievement = await this.unlockAchievement(donorId, 'first_donation');
+      const achievement = await this.unlockAchievement(userId, 'first_donation');
       if (achievement) achievements.push(achievement);
     }
     
     // Hero (5 donations)
     if (totalDonations === 5) {
-      const achievement = await this.unlockAchievement(donorId, 'hero');
+      const achievement = await this.unlockAchievement(userId, 'hero');
       if (achievement) achievements.push(achievement);
     }
     
     // Lifesaver (10 donations)
     if (totalDonations === 10) {
-      const achievement = await this.unlockAchievement(donorId, 'lifesaver');
+      const achievement = await this.unlockAchievement(userId, 'lifesaver');
       if (achievement) achievements.push(achievement);
     }
     
     // Champion (25 donations)
     if (totalDonations === 25) {
-      const achievement = await this.unlockAchievement(donorId, 'champion');
+      const achievement = await this.unlockAchievement(userId, 'champion');
       if (achievement) achievements.push(achievement);
     }
     
@@ -267,28 +278,37 @@ exports.getLeaderboard = async (limit = 100, filter = {}) => {
   const User = require('../models/User');
   const Donor = require('../models/Donor');
   
-  // Get all users with donations
+  // IMPORTANT: DonationHistory.donorId references Donor collection, not User!
+  // We need to join through Donor to get User IDs
+  
+  // Step 1: Get donation counts by donor ID (Donor collection)
   const donationStats = await DonationHistory.aggregate([
     { $match: { status: 'completed' } },
     { 
       $group: {
         _id: '$donorId',
         donationCount: { $sum: 1 },
-        lastDonation: { $max: '$donatedAt' }
+        lastDonation: { $max: '$donationDate' }
       }
     }
   ]);
   
-  // Create a map of userId to donation count
-  const donationMap = {};
-  donationStats.forEach(stat => {
-    donationMap[stat._id.toString()] = {
-      donationCount: stat.donationCount,
-      lastDonation: stat.lastDonation
-    };
-  });
+  // Step 2: Convert donor IDs to user IDs and create map
+  const donationMapByUserId = {};
   
-  // Get all gamification profiles
+  for (const stat of donationStats) {
+    // Find the donor record to get the userId
+    const donor = await Donor.findById(stat._id).select('userId').lean();
+    if (donor && donor.userId) {
+      const userId = donor.userId.toString();
+      donationMapByUserId[userId] = {
+        donationCount: stat.donationCount,
+        lastDonation: stat.lastDonation
+      };
+    }
+  }
+  
+  // Step 3: Get all gamification profiles
   const gamificationProfiles = await Gamification.find(filter)
     .populate('userId', 'name')
     .lean();
@@ -304,7 +324,7 @@ exports.getLeaderboard = async (limit = 100, filter = {}) => {
   for (const profile of gamificationProfiles) {
     if (profile.userId) {
       const userId = profile.userId._id.toString();
-      const donations = donationMap[userId] || { donationCount: 0 };
+      const donations = donationMapByUserId[userId] || { donationCount: 0 };
       
       // Fetch donor info for city and blood group
       const donorInfo = await Donor.findOne({ userId: userId }).select('city state bloodGroup').lean();
@@ -328,7 +348,7 @@ exports.getLeaderboard = async (limit = 100, filter = {}) => {
   }
   
   // Add users with donations but no gamification profile
-  for (const [userId, stats] of Object.entries(donationMap)) {
+  for (const [userId, stats] of Object.entries(donationMapByUserId)) {
     if (!userIdsWithGamification.has(userId)) {
       const user = await User.findById(userId).select('name').lean();
       const donorInfo = await Donor.findOne({ userId: userId }).select('city state bloodGroup').lean();
