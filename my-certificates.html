@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Certificates - LifeLink v2.0</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#dc3545">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    
+    <style>
+        .certificate-card {
+            background: var(--bg-card, #fff);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #10b981;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .certificate-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .certificate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .certificate-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary, #1a1a1a);
+            font-family: 'Courier New', monospace;
+        }
+        
+        .certificate-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .certificate-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .detail-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary, #666);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .detail-value {
+            font-size: 1rem;
+            color: var(--text-primary, #1a1a1a);
+            font-weight: 500;
+        }
+        
+        .blood-group {
+            display: inline-block;
+            background: #dc3545;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-weight: 700;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary, #666);
+        }
+        
+        .empty-state img {
+            width: 200px;
+            opacity: 0.5;
+            margin-bottom: 1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--bg-card, #fff);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            font-size: 2rem;
+            margin: 0 0 0.5rem 0;
+            color: #10b981;
+        }
+        
+        .stat-card p {
+            margin: 0;
+            color: var(--text-secondary, #666);
+            font-size: 0.875rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary, #666);
+        }
+        
+        .spinner {
+            border: 3px solid rgba(0,0,0,0.1);
+            border-left-color: #dc3545;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button id="themeToggle" style="position: fixed; top: 5rem; right: 1rem; z-index: 1000; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; background: var(--bg-card, #fff); box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">
+        🌙 Dark
+    </button>
+
+    <!-- Navbar -->
+    <div class="navbar">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="donor-dashboard.html" class="navbar-brand">🩸 LifeLink v2.0</a>
+            <button class="btn btn-secondary" onclick="window.location.href='donor-dashboard.html'">← Back to Dashboard</button>
+        </div>
+    </div>
+
+    <div class="container" style="margin-top: 2rem; margin-bottom: 4rem;">
+        <div id="alertContainer"></div>
+
+        <!-- Header -->
+        <div class="card">
+            <h1 style="margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                🏆 My Donation Certificates
+            </h1>
+            <p style="margin: 0; color: var(--text-secondary, #666);">
+                Download and share your certificates of appreciation for saving lives
+            </p>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3 id="totalCertificates">0</h3>
+                <p>Total Certificates</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalUnits">0</h3>
+                <p>Units Donated</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="latestDate">-</h3>
+                <p>Latest Donation</p>
+            </div>
+        </div>
+
+        <!-- Certificates List -->
+        <div id="certificatesContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading your certificates...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/theme.js"></script>
+    <script src="js/session.js"></script>
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api';
+        let certificates = [];
+        
+        // Show alert function
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+        
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+        
+        // Download certificate
+        async function downloadCertificate(donationId, certificateNumber) {
+            try {
+                const token = localStorage.getItem('token');
+                
+                const response = await fetch(`${API_BASE_URL}/donor/certificate/${donationId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to download certificate');
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Certificate_${certificateNumber}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showAlert('Certificate downloaded successfully!', 'success');
+            } catch (error) {
+                console.error('Download error:', error);
+                showAlert('Failed to download certificate', 'error');
+            }
+        }
+        
+        // Render certificates
+        function renderCertificates() {
+            const container = document.getElementById('certificatesContainer');
+            
+            if (certificates.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">📜</div>
+                        <h3>No Certificates Yet</h3>
+                        <p>Complete your first donation to receive a certificate of appreciation!</p>
+                        <button class="btn btn-primary" style="margin-top: 1rem;" onclick="window.location.href='donor-dashboard.html'">
+                            View Available Requests
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = certificates.map(cert => `
+                <div class="certificate-card">
+                    <div class="certificate-header">
+                        <div>
+                            <div class="certificate-number">🏆 ${cert.certificateNumber}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary, #666); margin-top: 0.25rem;">
+                                Certificate Number
+                            </div>
+                        </div>
+                        <div class="certificate-badge">
+                            ✓ Verified
+                        </div>
+                    </div>
+                    
+                    <div class="certificate-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Blood Group</span>
+                            <span class="detail-value">
+                                <span class="blood-group">${cert.bloodGroup}</span>
+                            </span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Units Donated</span>
+                            <span class="detail-value">${cert.unitsGiven} unit${cert.unitsGiven > 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Hospital/Center</span>
+                            <span class="detail-value">${cert.hospitalName}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Donation Date</span>
+                            <span class="detail-value">${formatDate(cert.donationDate)}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color, #e5e7eb);">
+                        <div style="font-size: 0.875rem; color: var(--text-secondary, #666);">
+                            Generated on ${formatDate(cert.generatedAt)}
+                        </div>
+                        <button class="download-btn" onclick="downloadCertificate('${cert.id}', '${cert.certificateNumber}')">
+                            📥 Download Certificate
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Update statistics
+        function updateStats() {
+            document.getElementById('totalCertificates').textContent = certificates.length;
+            
+            const totalUnits = certificates.reduce((sum, cert) => sum + cert.unitsGiven, 0);
+            document.getElementById('totalUnits').textContent = totalUnits;
+            
+            if (certificates.length > 0) {
+                const latestDate = new Date(Math.max(...certificates.map(c => new Date(c.donationDate))));
+                const daysAgo = Math.floor((new Date() - latestDate) / (1000 * 60 * 60 * 24));
+                document.getElementById('latestDate').textContent = daysAgo === 0 ? 'Today' : `${daysAgo}d ago`;
+            } else {
+                document.getElementById('latestDate').textContent = '-';
+            }
+        }
+        
+        // Load certificates
+        async function loadCertificates() {
+            try {
+                const token = localStorage.getItem('token');
+                
+                if (!token) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                const response = await fetch(`${API_BASE_URL}/donor/certificates`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to load certificates');
+                }
+                
+                certificates = data.data || [];
+                renderCertificates();
+                updateStats();
+                
+            } catch (error) {
+                console.error('Load certificates error:', error);
+                document.getElementById('certificatesContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">⚠️</div>
+                        <h3>Error Loading Certificates</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" style="margin-top: 1rem;" onclick="loadCertificates()">
+                            Try Again
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            loadCertificates();
+        });
+    </script>
+</body>
+</html>

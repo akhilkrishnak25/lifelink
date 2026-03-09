@@ -10,6 +10,8 @@ const emailService = require('../services/email.service');
 const User = require('../models/User');
 const certificateService = require('../services/certificate.service');
 const gamificationService = require('../services/gamification.service');
+const BlockchainService = require('../services/blockchain/blockchain.service');
+const blockchainService = new BlockchainService();
 
 /**
  * @desc    Create new blood request
@@ -465,9 +467,44 @@ exports.completeRequest = async (req, res) => {
       console.error('⚠️ Gamification update error:', gamError.message);
     }
 
+    // 🔗 Record donation on blockchain for tamper-proof verification
+    let blockchainRecord = null;
+    try {
+      console.log('🔗 Recording donation on blockchain...');
+      
+      blockchainRecord = await blockchainService.createDonationRecord({
+        userId: donor.userId._id,
+        donationId: donationHistory._id,
+        payload: {
+          donorId: donor._id.toString(),
+          donorName: donor.userId.name,
+          bloodGroup: request.bloodGroup,
+          unitsGiven: request.unitsRequired,
+          hospitalName: request.hospitalName,
+          location: request.location,
+          certificateNumber,
+          donationDate: new Date().toISOString(),
+          requestId: request._id.toString()
+        }
+      });
+      
+      console.log(`✅ Blockchain record created: ${blockchainRecord.transactionHash}`);
+      console.log(`   Chain: ${blockchainRecord.chain}`);
+      console.log(`   Status: ${blockchainRecord.status}`);
+      
+    } catch (blockchainError) {
+      // Don't block the donation completion if blockchain recording fails
+      console.error('⚠️ Blockchain recording error:', blockchainError.message);
+    }
+
     res.json({
       success: true,
       message: 'Request marked as completed. Certificate generated successfully!',
+      blockchain: blockchainRecord ? {
+        transactionHash: blockchainRecord.transactionHash,
+        chain: blockchainRecord.chain,
+        status: blockchainRecord.status
+      } : null,
       data: request,
       certificate: {
         number: certificateNumber,
