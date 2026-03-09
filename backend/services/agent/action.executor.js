@@ -1,5 +1,5 @@
 const notificationService = require('../notification.service');
-const { Notification } = require('../../models/Notification');
+const Notification = require('../../models/Notification');
 const Message = require('../../models/Message');
 
 /**
@@ -21,7 +21,6 @@ class ActionExecutor {
     const executionRecord = {
       actionId: `${action.stepNumber}-${Date.now()}`,
       type: action.action,
-      targetId: null,
       executedAt: new Date(),
       success: false,
       errorMessage: null,
@@ -87,12 +86,21 @@ class ActionExecutor {
    * Notify specific donors (targeted notifications)
    */
   async _notifyDonors(donorIds, requestData, agentState) {
+    console.log(`\n📣 [_notifyDonors] Called with donor IDs:`, donorIds);
+    
     const Donor = require('../../models/Donor');
     
     const donors = await Donor.find({ _id: { $in: donorIds } }).populate('userId');
+    
+    console.log(`📣 [_notifyDonors] Found ${donors.length} donors in database`);
 
     for (const donor of donors) {
-      if (!donor.userId) continue;
+      console.log(`📣 [_notifyDonors] Processing donor ${donor._id}...`);
+      
+      if (!donor.userId) {
+        console.log(`⚠️  [_notifyDonors] Skipping donor ${donor._id} - no userId`);
+        continue;
+      }
 
       // Find the donor's score and reason from agent state
       const donorScore = agentState.decision.rankedDonors.find(
@@ -100,7 +108,7 @@ class ActionExecutor {
       );
 
       const notification = {
-        type: 'blood_request',
+        type: 'match',
         title: `🆘 ${requestData.urgency.toUpperCase()} Blood Request`,
         message: `${requestData.bloodGroup} blood needed at ${requestData.hospitalName}. ${requestData.unitsRequired} unit(s) required.`,
         data: {
@@ -117,10 +125,15 @@ class ActionExecutor {
       };
 
       // Save to database
-      await Notification.create({
-        userId: donor.userId._id,
-        ...notification
-      });
+      try {
+        const savedNotification = await Notification.create({
+          userId: donor.userId._id,
+          ...notification
+        });
+        console.log(`✅ Notification saved to DB (ID: ${savedNotification._id})`);
+      } catch (notifError) {
+        console.error(`❌ Failed to save notification for donor ${donor.userId._id}:`, notifError.message);
+      }
 
       // Send via Socket.IO
       if (this.io) {

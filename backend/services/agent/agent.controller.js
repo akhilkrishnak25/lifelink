@@ -289,6 +289,7 @@ class AgentController {
       
       // Record execution
       agentState.execution.actions.push(executionRecord);
+      agentState.markModified('execution.actions'); // Mark nested array as modified for Mongoose
       
       if (executionRecord.success) {
         agentState.execution.currentStep = step.stepNumber;
@@ -299,6 +300,7 @@ class AgentController {
             d => !agentState.execution.donorsContacted.includes(d)
           );
           agentState.execution.donorsContacted.push(...newDonors);
+          agentState.markModified('execution.donorsContacted'); // Mark nested array as modified
         }
         
         if (step.action === 'notify_donors' || step.action === 'broadcast') {

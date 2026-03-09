@@ -37,6 +37,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     return;
   }
   await loadDonorStats();
+  await loadMatchedRequests();
   await loadNearbyRequests();
   await loadDonationHistory();
   
@@ -167,6 +168,88 @@ async function loadDonorStats() {
     }
   } catch (error) {
     console.error('Error loading stats:', error);
+  }
+}
+
+/**
+ * Load AI-matched blood requests
+ */
+async function loadMatchedRequests() {
+  const container = document.getElementById('matchedRequests');
+  container.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const response = await apiRequest('/api/donor/matched-requests', 'GET');
+    
+    if (response.success && response.data.length > 0) {
+      container.innerHTML = response.data.map(request => `
+        <div class="request-card ${request.urgency}" style="border-left: 4px solid #10b981;">
+          <div class="request-header">
+            <div>
+              <span class="blood-group">${request.bloodGroup}</span>
+              <span class="badge badge-${request.urgency}">${request.urgency.toUpperCase()}</span>
+              <span class="badge" style="background: #10b981; color: white;">
+                🎯 AI Match: ${request.aiMatch.score ? Math.round(request.aiMatch.score) + '%' : 'High'}
+              </span>
+            </div>
+          </div>
+          
+          <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; margin: 12px 0; border-left: 3px solid #10b981;">
+            <strong style="color: #166534;">🤖 Why you were selected:</strong>
+            <p style="margin: 5px 0 0 0; color: #166534;">${request.aiMatch.reason}</p>
+            <p style="margin: 8px 0 0 0; color: #666; font-size: 0.875rem;">
+              📍 Distance: ${request.aiMatch.distance} | ⏰ Matched: ${formatDate(request.aiMatch.matchedAt)}
+            </p>
+          </div>
+
+          <div class="request-info">
+            <div class="info-item">
+              <span class="info-label">Hospital</span>
+              <span class="info-value">${request.hospitalName}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Patient</span>
+              <span class="info-value">${request.patientName}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Units Needed</span>
+              <span class="info-value">${request.unitsRequired}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Contact</span>
+              <span class="info-value">${request.contactNumber}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Location</span>
+              <span class="info-value">${request.city}, ${request.state}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Created</span>
+              <span class="info-value">${formatDate(request.createdAt)}</span>
+            </div>
+          </div>
+          
+          ${request.description ? `<p style="margin-top: 0.75rem; font-size: 0.875rem; color: #666;">${request.description}</p>` : ''}
+          
+          <button class="btn btn-primary btn-block" style="margin-top: 1rem; background: #10b981; border-color: #10b981;" onclick="acceptRequest('${request._id}')">
+            ✅ Accept This Request
+          </button>
+        </div>
+      `).join('');
+    } else {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🤖</div>
+          <p>No AI-matched requests yet</p>
+          <p style="font-size: 0.875rem; color: #666;">
+            Our AI will notify you when there are blood requests that match your profile perfectly!
+          </p>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Error loading matched requests:', error);
+    container.innerHTML = '<div class="alert alert-danger">Error loading matched requests</div>';
   }
 }
 

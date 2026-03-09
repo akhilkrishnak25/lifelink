@@ -7,6 +7,7 @@ const {
   createOrUpdateProfile,
   toggleAvailability,
   getNearbyRequests,
+  getMatchedRequests,
   acceptRequest,
   getDonationHistory,
   getStats,
@@ -23,6 +24,7 @@ router.get('/profile', getProfile);
 router.post('/profile', validateDonorProfile, createOrUpdateProfile);
 router.put('/availability', toggleAvailability);
 router.get('/nearby-requests', getNearbyRequests);
+router.get('/matched-requests', getMatchedRequests);
 router.post('/accept-request/:id', acceptRequest);
 router.get('/history', getDonationHistory);
 router.get('/stats', getStats);

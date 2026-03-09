@@ -58,22 +58,75 @@ class Observer {
    * Get detailed donor data for AI scoring
    */
   async getDonorDataForScoring(requestData, maxDistance = 50) {
+    console.log(`\n🔍 [OBSERVER] getDonorDataForScoring called`);
+    console.log(`   Request Blood Group: ${requestData.bloodGroup}`);
+    console.log(`   Request Location:`, JSON.stringify(requestData.location));
+    console.log(`   Max Distance: ${maxDistance}km`);
+    
     const compatibleGroups = this._getCompatibleBloodGroups(requestData.bloodGroup);
+    console.log(`   Compatible Blood Groups:`, compatibleGroups);
 
-    // Find available donors with geospatial query
-    const donors = await Donor.find({
+    // First, check total donors without geospatial filter
+    const totalCompatible = await Donor.countDocuments({
+      bloodGroup: { $in: compatibleGroups }
+    });
+    console.log(`   Total compatible donors (any location): ${totalCompatible}`);
+
+    const availableCompatible = await Donor.countDocuments({
+      bloodGroup: { $in: compatibleGroups },
+      isAvailable: true,
+      medicallyFit: true
+    });
+    console.log(`   Available & fit compatible donors: ${availableCompatible}`);
+
+    // Check donors with valid location data
+    const withLocation = await Donor.countDocuments({
       bloodGroup: { $in: compatibleGroups },
       isAvailable: true,
       medicallyFit: true,
-      location: {
-        $near: {
-          $geometry: requestData.location,
-          $maxDistance: maxDistance * 1000 // Convert km to meters
+      'location.type': 'Point',
+      'location.coordinates': { $exists: true, $ne: [] }
+    });
+    console.log(`   With valid location data: ${withLocation}`);
+
+    // Find available donors with geospatial query
+   let donors = [];
+    try {
+      donors = await Donor.find({
+        bloodGroup: { $in: compatibleGroups },
+        isAvailable: true,
+        medicallyFit: true,
+        location: {
+          $near: {
+            $geometry: requestData.location,
+            $maxDistance: maxDistance * 1000 // Convert km to meters
+          }
         }
-      }
-    })
-    .populate('userId', 'name email phone createdAt')
-    .limit(50); // Reasonable limit
+      })
+      .populate('userId', 'name email phone createdAt')
+      .limit(50); // Reasonable limit
+      
+      console.log(`   ✅ Geospatial query succeeded: Found ${donors.length} donors within ${maxDistance}km\n`);
+    } catch (geoError) {
+      console.error(`   ❌ Geospatial query FAILED:`, geoError.message);
+      console.error(`   This likely means:`);
+      console.error(`   - Geospatial index missing on 'location' field`);
+      console.error(`   - Donors have invalid location format`);
+      console.error(`   - Request location is invalid`);
+      console.error(`\n   Falling back to non-geospatial query...\n`);
+      
+      // Fallback: get any available donors (no distance filter)
+      donors = await Donor.find({
+        bloodGroup: { $in: compatibleGroups },
+        isAvailable: true,
+        medicallyFit: true,
+        'location.coordinates': { $exists: true }
+      })
+      .populate('userId', 'name email phone createdAt')
+      .limit(50);
+      
+      console.log(`   Fallback query found: ${donors.length} donors\n`);
+    }
 
     // Get gamification data for reliability scores
     const donorUserIds = donors.map(d => d.userId?._id).filter(Boolean);

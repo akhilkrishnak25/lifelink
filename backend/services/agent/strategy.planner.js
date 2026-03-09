@@ -54,7 +54,7 @@ class StrategyPlanner {
         {
           stepNumber: 1,
           action: 'notify_donors',
-          targetDonors: topDonors.map(d => d.donor_id),
+          targetDonors: topDonors.map(d => d.donorId),
           scheduledTime: new Date(),
           timeout: responseWindows[urgency] * 60 * 1000, // Convert to ms
           fallbackAction: 'escalate',
@@ -63,7 +63,7 @@ class StrategyPlanner {
         {
           stepNumber: 2,
           action: 'open_chat',
-          targetDonors: topDonors.map(d => d.donor_id),
+          targetDonors: topDonors.map(d => d.donorId),
           scheduledTime: new Date(Date.now() + 2 * 60 * 1000), // 2 minutes after notifications
           timeout: null,
           fallbackAction: null,
@@ -96,7 +96,7 @@ class StrategyPlanner {
         {
           stepNumber: 1,
           action: 'broadcast',
-          targetDonors: scoredDonors.map(d => d.donor_id),
+          targetDonors: scoredDonors.map(d => d.donorId),
           scheduledTime: new Date(),
           timeout: 15 * 60 * 1000, // 15 minutes
           fallbackAction: 'expand_radius',
@@ -134,7 +134,7 @@ class StrategyPlanner {
       steps.push({
         stepNumber: i + 1,
         action: 'notify_donors',
-        targetDonors: batchDonors.map(d => d.donor_id),
+        targetDonors: batchDonors.map(d => d.donorId),
         scheduledTime: new Date(Date.now() + i * 10 * 60 * 1000), // 10 min intervals
         timeout: 10 * 60 * 1000,
         fallbackAction: i < maxSteps - 1 ? 'next_batch' : 'broadcast',
@@ -171,7 +171,7 @@ class StrategyPlanner {
         {
           stepNumber: 1,
           action: 'notify_donors',
-          targetDonors: topDonors.map(d => d.donor_id),
+          targetDonors: topDonors.map(d => d.donorId),
           scheduledTime: new Date(),
           timeout: 5 * 60 * 1000, // 5 minutes for critical
           fallbackAction: 'broadcast',
@@ -180,7 +180,7 @@ class StrategyPlanner {
         {
           stepNumber: 2,
           action: 'broadcast',
-          targetDonors: remainingDonors.map(d => d.donor_id),
+          targetDonors: remainingDonors.map(d => d.donorId),
           scheduledTime: new Date(Date.now() + 5 * 60 * 1000), // After 5 minutes
           timeout: 10 * 60 * 1000,
           fallbackAction: 'expand_radius',
@@ -262,7 +262,7 @@ class StrategyPlanner {
     const escalationStep = {
       stepNumber: currentPlan.steps.length + 1,
       action: 'broadcast',
-      targetDonors: allAvailableDonors.map(d => d._id || d.donor_id),
+      targetDonors: allAvailableDonors.map(d => d._id || d.donorId),
       scheduledTime: new Date(),
       timeout: 20 * 60 * 1000,
       fallbackAction: 'admin_alert',

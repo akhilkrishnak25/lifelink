@@ -349,7 +349,7 @@ class MultiChannelNotificationService {
                   recipient.fcmToken,
                   `🩸 ${request.urgency.toUpperCase()}: ${request.bloodGroup} Needed`,
                   `${request.hospitalName} - ${request.city}. Tap to respond.`,
-                  { requestId: request._id.toString(), type: 'blood_request' }
+                  { requestId: request._id.toString(), type: 'match' }
                 );
                 results.push.push({ recipient: recipient.fcmToken.substring(0, 20), ...pushResult });
                 
@@ -367,7 +367,7 @@ class MultiChannelNotificationService {
       const userId = recipient.userId?._id || recipient._id;
       if (userId) {
         this.io?.to(userId.toString()).emit('urgent-alert', {
-          type: 'blood_request',
+          type: 'match',
           urgency: request.urgency,
           request: {
             id: request._id,
@@ -397,7 +397,7 @@ class MultiChannelNotificationService {
       topic,
       `🩸 ${request.urgency.toUpperCase()}: ${bloodGroup} Blood Needed`,
       `${request.hospitalName} needs ${request.unitsRequired} units. Tap to help.`,
-      { requestId: request._id.toString(), type: 'blood_request' }
+      { requestId: request._id.toString(), type: 'match' }
     );
   }
 

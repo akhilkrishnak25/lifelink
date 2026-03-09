@@ -4,6 +4,18 @@ const mongoose = require('mongoose');
  * AgentState Model - Stores the system state for agentic decision making
  * Tracks each blood request's journey through the Observe-Decide-Plan-Act-Learn loop
  */
+
+// Define sub-schemas first for better type safety
+const executionActionSchema = new mongoose.Schema({
+  actionId: String,
+  type: String,
+  targetId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  executedAt: Date,
+  success: Boolean,
+  errorMessage: String,
+  metadata: mongoose.Schema.Types.Mixed
+}, { _id: false });
+
 const agentStateSchema = new mongoose.Schema({
   requestId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -101,15 +113,7 @@ const agentStateSchema = new mongoose.Schema({
   
   // ACT - Execution tracking
   execution: {
-    actions: [{
-      actionId: String,
-      type: String, // 'socket_notification', 'email', 'sms', 'chat_opened', 'donor_locked'
-      targetId: mongoose.Schema.Types.ObjectId,
-      executedAt: Date,
-      success: Boolean,
-      errorMessage: String,
-      metadata: mongoose.Schema.Types.Mixed
-    }],
+    actions: [executionActionSchema],
     
     notificationsSent: Number,
     chatSessionsOpened: Number,
@@ -252,5 +256,10 @@ agentStateSchema.virtual('actionsTaken').get(function() {
 // Ensure virtuals are serialized
 agentStateSchema.set('toJSON', { virtuals: true });
 agentStateSchema.set('toObject', { virtuals: true });
+
+// Delete cached model to ensure fresh schema is used
+if (mongoose.models.AgentState) {
+  delete mongoose.models.AgentState;
+}
 
 module.exports = mongoose.model('AgentState', agentStateSchema);

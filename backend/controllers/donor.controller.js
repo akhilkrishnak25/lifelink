@@ -1,6 +1,7 @@
 const Donor = require('../models/Donor');
 const BloodRequest = require('../models/BloodRequest');
 const DonationHistory = require('../models/DonationHistory');
+const Notification = require('../models/Notification');
 const geoService = require('../services/geo.service');
 const AgentController = require('../services/agent/agent.controller');
 const AgentState = require('../models/AgentState');
@@ -305,6 +306,108 @@ exports.getDonationHistory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching donation history'
+    });
+  }
+};
+
+/**
+ * @desc    Get AI-matched blood requests for donor
+ * @route   GET /api/donor/matched-requests
+ * @access  Private (Donor only)
+ */
+exports.getMatchedRequests = async (req, res) => {
+  try {
+    const donor = await Donor.findOne({ userId: req.user.id });
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donor profile not found'
+      });
+    }
+
+    // Find notifications sent to this donor  by the Agentic AI
+    console.log(`[getMatchedRequests] Querying notifications with:`);
+    console.log(`   userId: ${req.user.id}`);
+    console.log(`   type: 'match'`);
+    console.log(`   data.requestId: { $exists: true }`);
+    
+    const notifications = await Notification.find({
+      userId: req.user.id,
+      type: 'match',
+      'data.requestId': { $exists: true }
+    })
+    .sort({ createdAt: -1 })
+    .limit(20);
+
+    console.log(`[getMatchedRequests] Found ${notifications.length} notifications for user ${req.user.id}`);
+    if (notifications.length > 0) {
+      console.log(`[getMatchedRequests] First notification:`, {
+        id: notifications[0]._id,
+        userId: notifications[0].userId,
+        requestId: notifications[0].data?.requestId
+      });
+    }
+
+    // Extract request IDs
+    const requestIds = notifications.map(n => n.data.requestId).filter(Boolean);
+
+    console.log(`[getMatchedRequests] Extracted ${requestIds.length} request IDs:`, requestIds);
+
+    if (requestIds.length === 0) {
+      return res.json({
+        success: true,
+        count: 0,
+        data: []
+      });
+    }
+
+    // Fetch the actual blood requests
+    const requests = await BloodRequest.find({
+      _id: { $in: requestIds },
+      status: { $in: ['pending', 'approved'] } //Only active requests
+    }).populate('receiverId', 'name phone email');
+    
+    console.log(`[getMatchedRequests] Found ${requests.length} blood requests matching IDs`);
+
+    // Enrich requests with AI data from notifications
+    const enrichedRequests = requests.map(request => {
+      const notification = notifications.find(
+        n => n.data.requestId.toString() === request._id.toString()
+      );
+
+      const requestObj = request.toObject();
+      
+      return {
+        ...requestObj,
+        aiMatch: {
+          score: notification?.data?.aiScore || null,
+          reason: notification?.data?.selectedReason || 'AI matched',
+          distance: notification?.data?.distance || 'nearby',
+          matchedAt: notification?.createdAt,
+          notificationRead: notification?.read || false
+        }
+      };
+    });
+
+    // Sort by AI score (highest first), then by creation date
+    enrichedRequests.sort((a, b) => {
+      const scoreA = a.aiMatch?.score || 0;
+      const scoreB = b.aiMatch?.score || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    res.json({
+      success: true,
+      count: enrichedRequests.length,
+      data: enrichedRequests
+    });
+  } catch (error) {
+    console.error('Get matched requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching matched requests'
     });
   }
 };
