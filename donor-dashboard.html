@@ -12,6 +12,27 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dark-mode.css">
+    <style>
+        #leaderboardContainer table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+        #leaderboardContainer table tbody tr:hover {
+            background-color: #f1f3f5 !important;
+        }
+        #leaderboardContainer table tbody tr td {
+            padding: 12px 8px;
+            border: 1px solid #dee2e6;
+        }
+        @media (max-width: 768px) {
+            #leaderboardContainer table {
+                font-size: 0.85rem;
+            }
+            #leaderboardContainer table th,
+            #leaderboardContainer table td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Theme Toggle -->
@@ -133,6 +154,14 @@
             </div>
         </div>
 
+        <!-- Leaderboard -->
+        <div class="card" id="leaderboard" style="margin-top: 1rem;">
+            <div class="card-header">🏆 Top Donors Leaderboard</div>
+            <div id="leaderboardContainer">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
             <div class="card" style="margin-top: 1rem;">
                 <div class="card-header">Donor Precautions (Before & After Donation)</div>
                 <div class="card-body">
@@ -204,7 +233,74 @@
             }
         }
         
+        // Load leaderboard
+        async function loadLeaderboard() {
+            try {
+                const lbResponse = await gamificationClient.getLeaderboard(50);
+                const leaderboard = lbResponse?.data || [];
+                
+                const container = document.getElementById('leaderboardContainer');
+                
+                if (leaderboard.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No donors in leaderboard yet. Be the first to donate!</p>';
+                    return;
+                }
+                
+                const rows = leaderboard.map((u, idx) => {
+                    const userName = u.userId?.name || 'Anonymous Donor';
+                    const city = u.userId?.city || '-';
+                    const bloodType = u.userId?.bloodType || '-';
+                    const points = u.points || 0;
+                    const donations = u.donationCount || 0;
+                    const level = u.level || 1;
+                    
+                    // Medal for top 3
+                    let medal = '';
+                    if (idx === 0) medal = '🥇';
+                    else if (idx === 1) medal = '🥈';
+                    else if (idx === 2) medal = '🥉';
+                    
+                    return `
+                        <tr style="${idx < 3 ? 'background: #fff3cd;' : ''}">
+                            <td style="text-align: center; font-weight: bold;">${medal} ${u.rank}</td>
+                            <td style="font-weight: 500;">${userName}</td>
+                            <td style="text-align: center;">${city}</td>
+                            <td style="text-align: center;"><span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">${bloodType}</span></td>
+                            <td style="text-align: center; font-weight: bold; color: #28a745;">${points}</td>
+                            <td style="text-align: center;">${donations}</td>
+                            <td style="text-align: center;"><span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem;">Lvl ${level}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                container.innerHTML = `
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                    <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Rank</th>
+                                    <th style="padding: 12px 8px; text-align: left; border: 1px solid #dee2e6;">Name</th>
+                                    <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">City</th>
+                                    <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Blood Type</th>
+                                    <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Points</th>
+                                    <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Donations</th>
+                                    <th style="padding: 12px 8px; text-align: center; border: 1px solid #dee2e6;">Level</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                document.getElementById('leaderboardContainer').innerHTML = '<p style="text-align: center; color: #dc3545; padding: 2rem;">Failed to load leaderboard. Please try again later.</p>';
+            }
+        }
+        
         loadGamificationData();
+        loadLeaderboard();
     </script>
 </body>
 </html>
