@@ -30,7 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # ML Models (comment out if you want to commit trained models)
-ml/models/*.pkl
+# ml/models/*.pkl - DISABLED: Committing models for Render deployment
 
 # Build files
 dist/
