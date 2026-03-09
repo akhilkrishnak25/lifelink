@@ -27,8 +27,8 @@ services:
   - type: web
     name: lifelink-ml
     env: python
-    buildCommand: cd ml && pip install -r requirements.txt && python train_model.py
-    startCommand: cd ml && gunicorn app:app
+    buildCommand: cd ml && pip install -r requirements.txt
+    startCommand: cd ml && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
     envVars:
       - key: PORT
         value: 10000
