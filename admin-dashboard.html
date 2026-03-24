@@ -165,6 +165,7 @@
 
         async function loadFlaggedRequests() {
             const container = document.getElementById('flaggedRequests');
+            const esc = window.escapeHTML || ((v) => String(v ?? ''));
             container.innerHTML = '<div class="spinner"></div>';
 
             try {
@@ -172,7 +173,7 @@
                 
                 if (response.success && response.data.length > 0) {
                     container.innerHTML = response.data.map(analysis => {
-                        const request = analysis.requestId;
+                        const request = analysis.requestId || {};
                         const locationFlags = request.locationFlags || [];
                         const locationSeverity = request.locationSeverity || 0;
                         const combinedSeverity = analysis.combinedSeverity || 0;
@@ -214,15 +215,15 @@
                                 <div class="request-info">
                                     <div class="info-item">
                                         <span class="info-label">Hospital</span>
-                                        <span class="info-value">${request.hospitalName}</span>
+                                        <span class="info-value">${esc(request.hospitalName || 'N/A')}</span>
                                     </div>
                                     <div class="info-item">
                                         <span class="info-label">Patient</span>
-                                        <span class="info-value">${request.patientName}</span>
+                                        <span class="info-value">${esc(request.patientName || 'N/A')}</span>
                                     </div>
                                     <div class="info-item">
                                         <span class="info-label">ML Score</span>
-                                        <span class="info-value">${analysis.mlScore.toFixed(4)}</span>
+                                        <span class="info-value">${Number(analysis.mlScore || 0).toFixed(4)}</span>
                                     </div>
                                     ${combinedSeverity > 0 ? `
                                     <div class="info-item">
@@ -233,13 +234,13 @@
                                     ${request.locationDetails?.city ? `
                                     <div class="info-item">
                                         <span class="info-label">Location (IP)</span>
-                                        <span class="info-value">${request.locationDetails.city}, ${request.locationDetails.country}</span>
+                                        <span class="info-value">${esc(request.locationDetails.city)}, ${esc(request.locationDetails.country || '')}</span>
                                     </div>
                                     ` : ''}
                                     ${request.locationDetails?.ipAddress ? `
                                     <div class="info-item">
                                         <span class="info-label">IP Address</span>
-                                        <span class="info-value">${request.locationDetails.ipAddress}</span>
+                                        <span class="info-value">${esc(request.locationDetails.ipAddress)}</span>
                                     </div>
                                     ` : ''}
                                     ${request.locationDetails?.distanceFromLast ? `
@@ -250,20 +251,20 @@
                                     ` : ''}
                                     <div class="info-item">
                                         <span class="info-label">Requests/Day</span>
-                                        <span class="info-value">${analysis.features.requestsPerDay}</span>
+                                        <span class="info-value">${analysis.features?.requestsPerDay ?? 0}</span>
                                     </div>
                                     <div class="info-item">
                                         <span class="info-label">Account Age</span>
-                                        <span class="info-value">${analysis.features.accountAgeDays} days</span>
+                                        <span class="info-value">${analysis.features?.accountAgeDays ?? 0} days</span>
                                     </div>
                                     <div class="info-item">
                                         <span class="info-label">Time Gap</span>
-                                        <span class="info-value">${analysis.features.timeGapHours} hrs</span>
+                                        <span class="info-value">${analysis.features?.timeGapHours ?? 0} hrs</span>
                                     </div>
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem;">
-                                    <button class="btn btn-success" onclick="approveRequest('${request._id}')">✓ Approve (Genuine)</button>
-                                    <button class="btn btn-danger" onclick="rejectRequest('${request._id}')">✗ Reject (Fake)</button>
+                                    <button class="btn btn-success" onclick="approveRequest('${esc(request._id)}')">✓ Approve (Genuine)</button>
+                                    <button class="btn btn-danger" onclick="rejectRequest('${esc(request._id)}')">✗ Reject (Fake)</button>
                                 </div>
                             </div>
                         `;
@@ -278,6 +279,7 @@
 
         async function loadAllRequests() {
             const container = document.getElementById('allRequests');
+            const esc = window.escapeHTML || ((v) => String(v ?? ''));
             container.innerHTML = '<div class="spinner"></div>';
 
             try {
@@ -297,11 +299,11 @@
                             <div class="request-info">
                                 <div class="info-item">
                                     <span class="info-label">Hospital</span>
-                                    <span class="info-value">${request.hospitalName}</span>
+                                    <span class="info-value">${esc(request.hospitalName || 'N/A')}</span>
                                 </div>
                                 <div class="info-item">
                                     <span class="info-label">Patient</span>
-                                    <span class="info-value">${request.patientName}</span>
+                                    <span class="info-value">${esc(request.patientName || 'N/A')}</span>
                                 </div>
                                 <div class="info-item">
                                     <span class="info-label">Units</span>
@@ -362,6 +364,7 @@
 
         async function loadLocationDetections() {
             const container = document.getElementById('locationDetections');
+            const esc = window.escapeHTML || ((v) => String(v ?? ''));
             container.innerHTML = '<div class="spinner"></div>';
 
             try {
@@ -448,7 +451,7 @@
                                     <div class="request-info" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
                                         <div class="info-item">
                                             <span class="info-label">Hospital</span>
-                                            <span class="info-value">${request.hospitalName}</span>
+                                            <span class="info-value">${esc(request.hospitalName || 'N/A')}</span>
                                         </div>
                                         <div class="info-item">
                                             <span class="info-label">Created</span>
@@ -457,13 +460,13 @@
                                         ${request.locationDetails?.city ? `
                                         <div class="info-item">
                                             <span class="info-label">Location</span>
-                                            <span class="info-value">${request.locationDetails.city}, ${request.locationDetails.country || ''}</span>
+                                            <span class="info-value">${esc(request.locationDetails.city)}, ${esc(request.locationDetails.country || '')}</span>
                                         </div>
                                         ` : ''}
                                         ${request.locationDetails?.ipAddress ? `
                                         <div class="info-item">
                                             <span class="info-label">IP</span>
-                                            <span class="info-value">${request.locationDetails.ipAddress}</span>
+                                            <span class="info-value">${esc(request.locationDetails.ipAddress)}</span>
                                         </div>
                                         ` : ''}
                                     </div>

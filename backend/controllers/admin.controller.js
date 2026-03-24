@@ -616,11 +616,11 @@ exports.toggleUserStatus = async (req, res) => {
       });
     }
 
-    // Prevent admins from deactivating themselves or other admins
-    if (user.role === 'admin' && req.user.role !== 'super_admin') {
+    // Only super admins can modify admin/super_admin accounts.
+    if ((user.role === 'admin' || user.role === 'super_admin') && req.user.role !== 'super_admin') {
       return res.status(403).json({
         success: false,
-        message: 'Cannot modify admin users'
+        message: 'Cannot modify privileged users'
       });
     }
 
@@ -657,11 +657,11 @@ exports.deleteUser = async (req, res) => {
       });
     }
 
-    // Prevent admins from deleting themselves or other admins
-    if (user.role === 'admin') {
+    // Only super admins can delete admin/super_admin accounts.
+    if ((user.role === 'admin' || user.role === 'super_admin') && req.user.role !== 'super_admin') {
       return res.status(403).json({
         success: false,
-        message: 'Cannot delete admin users. Use super admin controls instead.'
+        message: 'Cannot delete privileged users. Use super admin controls instead.'
       });
     }
 
@@ -1020,6 +1020,139 @@ exports.processUnanalyzedRequests = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error processing unanalyzed requests'
+    });
+  }
+};
+
+/**
+ * @desc    Get consolidated admin activity logs
+ * @route   GET /api/admin/activity-logs
+ * @access  Private (Admin only)
+ */
+exports.getActivityLogs = async (req, res) => {
+  try {
+    const { type, from, to, limit = 100 } = req.query;
+
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
+
+    const dateFilter = {};
+    if (from) dateFilter.$gte = new Date(from);
+    if (to) {
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.$lte = end;
+    }
+    const hasDateFilter = Object.keys(dateFilter).length > 0;
+
+    const logs = [];
+
+    if (!type || type === 'register') {
+      const userQuery = hasDateFilter ? { createdAt: dateFilter } : {};
+      const users = await User.find(userQuery)
+        .select('name email role createdAt')
+        .sort({ createdAt: -1 })
+        .limit(safeLimit)
+        .lean();
+
+      users.forEach((user) => {
+        logs.push({
+          type: 'register',
+          timestamp: user.createdAt,
+          title: 'User Registration',
+          message: `${user.name || 'Unknown'} (${user.email}) registered as ${user.role}`,
+          meta: {
+            userId: user._id,
+            role: user.role
+          }
+        });
+      });
+    }
+
+    if (!type || type === 'request') {
+      const requestQuery = hasDateFilter ? { createdAt: dateFilter } : {};
+      const requests = await BloodRequest.find(requestQuery)
+        .select('bloodGroup urgency hospitalName city status createdAt')
+        .sort({ createdAt: -1 })
+        .limit(safeLimit)
+        .lean();
+
+      requests.forEach((request) => {
+        logs.push({
+          type: 'request',
+          timestamp: request.createdAt,
+          title: 'Blood Request Created',
+          message: `${request.bloodGroup} (${request.urgency}) request at ${request.hospitalName}, ${request.city}`,
+          meta: {
+            requestId: request._id,
+            status: request.status
+          }
+        });
+      });
+    }
+
+    if (!type || type === 'donation') {
+      const donationQuery = hasDateFilter ? { donationDate: dateFilter } : {};
+      const donations = await DonationHistory.find(donationQuery)
+        .select('bloodGroup unitsGiven status donationDate')
+        .sort({ donationDate: -1 })
+        .limit(safeLimit)
+        .lean();
+
+      donations.forEach((donation) => {
+        logs.push({
+          type: 'donation',
+          timestamp: donation.donationDate,
+          title: 'Donation Recorded',
+          message: `${donation.unitsGiven} unit(s) of ${donation.bloodGroup} marked as ${donation.status}`,
+          meta: {
+            donationId: donation._id,
+            status: donation.status
+          }
+        });
+      });
+    }
+
+    if (!type || type === 'alert') {
+      const analysisQuery = {
+        prediction: 'fake',
+        ...(hasDateFilter && { analyzedAt: dateFilter })
+      };
+
+      const analyses = await FakeRequestAnalysis.find(analysisQuery)
+        .select('requestId mlScore confidence analyzedAt')
+        .sort({ analyzedAt: -1 })
+        .limit(safeLimit)
+        .lean();
+
+      analyses.forEach((analysis) => {
+        logs.push({
+          type: 'alert',
+          timestamp: analysis.analyzedAt,
+          title: 'AI Fake Detection',
+          message: `Request flagged by AI (score: ${analysis.mlScore?.toFixed?.(4) ?? analysis.mlScore}, confidence: ${analysis.confidence?.toFixed?.(2) ?? analysis.confidence})`,
+          meta: {
+            requestId: analysis.requestId,
+            analysisId: analysis._id
+          }
+        });
+      });
+    }
+
+    const sorted = logs
+      .filter((entry) => entry.timestamp)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, safeLimit);
+
+    res.json({
+      success: true,
+      count: sorted.length,
+      data: sorted
+    });
+  } catch (error) {
+    console.error('Get activity logs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching activity logs'
     });
   }
 };

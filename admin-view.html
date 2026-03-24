@@ -72,6 +72,14 @@
             background: #007bff;
             color: white;
         }
+        .role-user {
+            background: #0ea5e9;
+            color: white;
+        }
+        .role-super_admin {
+            background: #111827;
+            color: white;
+        }
         .status-active {
             color: #28a745;
             font-weight: 600;
@@ -134,9 +142,9 @@
 <body>
     <script src="js/session.js"></script>
     <script>
-        // Ensure only admin can access
+        // Ensure only admin/super_admin can access
         const user = Session.getUser();
-        if (!user || user.role !== 'admin') {
+        if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
             window.location.href = 'index.html';
         }
     </script>
@@ -181,11 +189,11 @@
 
             <!-- Tab Navigation -->
             <div class="tab-buttons">
-                <button class="tab-btn active" onclick="switchTab('users')">👥 User Management</button>
-                <button class="tab-btn" onclick="switchTab('donors')">🩸 Donor Management</button>
-                <button class="tab-btn" onclick="switchTab('analytics')">📊 Advanced Analytics</button>
-                <button class="tab-btn" onclick="switchTab('logs')">📝 Activity Logs</button>
-                <button class="tab-btn" onclick="switchTab('export')">💾 Export Data</button>
+                <button class="tab-btn active" onclick="switchTab(event, 'users')">👥 User Management</button>
+                <button class="tab-btn" onclick="switchTab(event, 'donors')">🩸 Donor Management</button>
+                <button class="tab-btn" onclick="switchTab(event, 'analytics')">📊 Advanced Analytics</button>
+                <button class="tab-btn" onclick="switchTab(event, 'logs')">📝 Activity Logs</button>
+                <button class="tab-btn" onclick="switchTab(event, 'export')">💾 Export Data</button>
             </div>
 
             <!-- Users Tab -->
@@ -197,7 +205,9 @@
                         <input type="text" id="userSearch" placeholder="Search users..." onkeyup="filterUsers()">
                         <select id="roleFilter" onchange="filterUsers()">
                             <option value="">All Roles</option>
+                            <option value="super_admin">Super Admin</option>
                             <option value="admin">Admin</option>
+                            <option value="user">User</option>
                             <option value="donor">Donor</option>
                             <option value="receiver">Receiver</option>
                         </select>
@@ -302,10 +312,10 @@
                         <input type="date" id="logDateTo" placeholder="To Date">
                         <select id="logType">
                             <option value="">All Actions</option>
-                            <option value="login">Logins</option>
                             <option value="register">Registrations</option>
                             <option value="request">Requests</option>
                             <option value="donation">Donations</option>
+                            <option value="alert">AI Alerts</option>
                         </select>
                         <button class="btn btn-primary" onclick="loadLogs()">🔄 Refresh</button>
                     </div>
@@ -371,11 +381,13 @@
         let allDonors = [];
 
         // Tab switching
-        function switchTab(tabName) {
+        function switchTab(event, tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
             document.getElementById(`${tabName}-tab`).classList.add('active');
             
             // Load data for the selected tab
@@ -406,6 +418,7 @@
 
         function displayUsers(users) {
             const container = document.getElementById('usersContainer');
+            const esc = window.escapeHTML || ((v) => String(v ?? ''));
             
             if (!users || users.length === 0) {
                 container.innerHTML = '<div class="alert alert-warning">No users match the filter</div>';
@@ -427,11 +440,23 @@
                     </thead>
                     <tbody>
                         ${users.map(user => `
+                            ${(() => {
+                                const role = user.role || 'user';
+                                const roleClassMap = {
+                                    super_admin: 'role-super_admin',
+                                    admin: 'role-admin',
+                                    donor: 'role-donor',
+                                    receiver: 'role-receiver',
+                                    user: 'role-user'
+                                };
+                                const roleClass = roleClassMap[role] || 'role-user';
+                                const isPrivileged = role === 'admin' || role === 'super_admin';
+                                return `
                             <tr>
-                                <td>${user.name || 'N/A'}</td>
-                                <td>${user.email}</td>
-                                <td><span class="badge-role role-${user.role}">${user.role.toUpperCase()}</span></td>
-                                <td>${user.phone || 'N/A'}</td>
+                                <td>${esc(user.name || 'N/A')}</td>
+                                <td>${esc(user.email || 'N/A')}</td>
+                                <td><span class="badge-role ${roleClass}">${esc(role.toUpperCase())}</span></td>
+                                <td>${esc(user.phone || 'N/A')}</td>
                                 <td class="${user.isActive ? 'status-active' : 'status-inactive'}">
                                     ${user.isActive ? '✓ Active' : '✗ Inactive'}
                                 </td>
@@ -441,11 +466,13 @@
                                             onclick="toggleUserStatus('${user._id}', ${!user.isActive})">
                                         ${user.isActive ? 'Deactivate' : 'Activate'}
                                     </button>
-                                    ${user.role !== 'admin' ? `
+                                    ${!isPrivileged ? `
                                         <button class="btn btn-danger action-btn" onclick="deleteUser('${user._id}')">Delete</button>
                                     ` : ''}
                                 </td>
                             </tr>
+                                `;
+                            })()}
                         `).join('')}
                     </tbody>
                 </table>
@@ -521,6 +548,7 @@
 
         function displayDonors(donors) {
             const container = document.getElementById('donorsContainer');
+            const esc = window.escapeHTML || ((v) => String(v ?? ''));
             
             if (!donors || donors.length === 0) {
                 container.innerHTML = '<div class="alert alert-warning">No donors match the filter</div>';
@@ -543,10 +571,10 @@
                     <tbody>
                         ${donors.map(donor => `
                             <tr>
-                                <td>${donor.userId?.name || 'N/A'}</td>
-                                <td><span class="blood-group">${donor.bloodGroup}</span></td>
-                                <td>${donor.city}, ${donor.state}</td>
-                                <td>${donor.phone}</td>
+                                <td>${esc(donor.userId?.name || 'N/A')}</td>
+                                <td><span class="blood-group">${esc(donor.bloodGroup)}</span></td>
+                                <td>${esc(donor.city)}, ${esc(donor.state)}</td>
+                                <td>${esc(donor.userId?.phone || 'N/A')}</td>
                                 <td class="${donor.isAvailable ? 'status-active' : 'status-inactive'}">
                                     ${donor.isAvailable ? '✓ Available' : '✗ Not Available'}
                                 </td>
@@ -569,7 +597,7 @@
             let filtered = allDonors.filter(donor => {
                 const matchesSearch = !searchTerm || 
                     donor.userId?.name?.toLowerCase().includes(searchTerm) || 
-                    donor.city.toLowerCase().includes(searchTerm);
+                    (donor.city || '').toLowerCase().includes(searchTerm);
                 const matchesBloodGroup = !bloodGroupFilter || donor.bloodGroup === bloodGroupFilter;
                 const matchesAvailability = !availabilityFilter || donor.isAvailable.toString() === availabilityFilter;
                 
@@ -606,42 +634,69 @@
         async function loadLogs() {
             const container = document.getElementById('logsContainer');
             container.innerHTML = '<div class="spinner"></div>';
-            
-            // Simulated logs - replace with actual API call
-            setTimeout(() => {
-                container.innerHTML = `
+
+            try {
+                const from = document.getElementById('logDateFrom').value;
+                const to = document.getElementById('logDateTo').value;
+                const type = document.getElementById('logType').value;
+                const esc = window.escapeHTML || ((v) => String(v ?? ''));
+
+                const params = new URLSearchParams();
+                if (from) params.append('from', from);
+                if (to) params.append('to', to);
+                if (type) params.append('type', type);
+                params.append('limit', '100');
+
+                const response = await apiRequest(`/api/admin/activity-logs?${params.toString()}`, 'GET');
+
+                if (!response.success || !response.data || response.data.length === 0) {
+                    container.innerHTML = '<div class="alert alert-info">No activity logs found for selected filters.</div>';
+                    return;
+                }
+
+                container.innerHTML = response.data.map(log => `
                     <div class="log-entry">
-                        <div class="timestamp">${new Date().toLocaleString()}</div>
-                        <strong>User Registration:</strong> New donor registered - John Doe (A+)
+                        <div class="timestamp">${new Date(log.timestamp).toLocaleString()}</div>
+                        <strong>${esc(log.title)}:</strong> ${esc(log.message)}
                     </div>
-                    <div class="log-entry">
-                        <div class="timestamp">${new Date(Date.now() - 3600000).toLocaleString()}</div>
-                        <strong>Blood Request:</strong> Emergency request created - O- needed
-                    </div>
-                    <div class="log-entry">
-                        <div class="timestamp">${new Date(Date.now() - 7200000).toLocaleString()}</div>
-                        <strong>Admin Action:</strong> Request flagged as fake - ID: #12345
-                    </div>
-                    <div class="alert alert-info" style="margin-top: 1rem;">
-                        Detailed activity logging coming soon. Integrate with your backend API.
-                    </div>
-                `;
-            }, 500);
+                `).join('');
+            } catch (error) {
+                container.innerHTML = '<div class="alert alert-danger">Error loading activity logs</div>';
+            }
         }
 
         // Export Data
         async function exportData(type) {
             try {
                 showAlert(`Exporting ${type} data...`, 'info');
-                
-                // Simulated export - replace with actual API call
-                setTimeout(() => {
-                    showAlert(`${type} data exported successfully!`, 'success');
-                }, 1000);
-                
-                // In production, use:
-                // const response = await apiRequest(`/api/admin/export/${type}`, 'GET');
-                // Download the CSV file
+
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE_URL}/api/admin/export/${encodeURIComponent(type)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to export data');
+                }
+
+                const blob = await response.blob();
+                const disposition = response.headers.get('content-disposition') || '';
+                const matchedName = disposition.match(/filename=([^;]+)/i);
+                const filename = matchedName ? matchedName[1].replace(/"/g, '') : `${type}_export.csv`;
+
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+
+                showAlert(`${type} data exported successfully!`, 'success');
             } catch (error) {
                 showAlert('Error exporting data', 'danger');
             }

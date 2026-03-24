@@ -115,11 +115,22 @@ class NotificationService {
 
     const notifElement = document.createElement('div');
     notifElement.className = `alert alert-${this.getAlertClass(notification.type)} alert-dismissible fade show notification-toast`;
-    notifElement.innerHTML = `
-      <strong>${notification.title}</strong>
-      <p class="mb-0">${notification.message}</p>
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
+
+    const titleEl = document.createElement('strong');
+    titleEl.textContent = notification.title || 'Notification';
+
+    const messageEl = document.createElement('p');
+    messageEl.className = 'mb-0';
+    messageEl.textContent = notification.message || '';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn-close';
+    closeBtn.setAttribute('data-bs-dismiss', 'alert');
+
+    notifElement.appendChild(titleEl);
+    notifElement.appendChild(messageEl);
+    notifElement.appendChild(closeBtn);
 
     container.appendChild(notifElement);
 
@@ -166,7 +177,7 @@ class NotificationService {
     this.handleNotification({
       type: 'message',
       title: 'New Message',
-      message: `${data.sender.name}: ${data.message.message.substring(0, 50)}...`,
+      message: `${data.sender?.name || 'User'}: ${String(data.message?.message || '').substring(0, 50)}...`,
       data: data
     });
   }

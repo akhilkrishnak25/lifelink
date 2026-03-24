@@ -19,6 +19,7 @@ const {
   deleteUser,
   getAdvancedAnalytics,
   exportData,
+  getActivityLogs,
   getLocationDetections,
   getUserLocationHistory,
   getSuspiciousLocations,
@@ -44,6 +45,7 @@ router.put('/users/:id/status', authorize('admin', 'super_admin'), toggleUserSta
 router.delete('/users/:id', authorize('admin', 'super_admin'), deleteUser);
 router.get('/analytics', authorize('admin', 'super_admin'), getAdvancedAnalytics);
 router.get('/export/:type', authorize('admin', 'super_admin'), exportData);
+router.get('/activity-logs', authorize('admin', 'super_admin'), getActivityLogs);
 
 // Location-based fraud detection routes
 router.get('/location-detections', authorize('admin', 'super_admin'), getLocationDetections);

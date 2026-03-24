@@ -7,6 +7,7 @@ class ChatClient {
     this.token = localStorage.getItem('token');
     this.currentConversation = null;
     this.socket = null;
+    this.escape = window.escapeHTML || ((value) => String(value ?? ''));
   }
 
   // Initialize with socket
@@ -78,17 +79,19 @@ class ChatClient {
     }
 
     container.innerHTML = conversations.map(conv => {
-      const lastMessage = conv.lastMessage;
+      const lastMessage = conv.lastMessage || {};
       const otherUser = lastMessage.senderId === this.getUserId() 
         ? lastMessage.receiverId 
         : lastMessage.senderId;
+      const otherUserName = this.escape(otherUser?.name || 'User');
+      const messagePreview = this.escape(String(lastMessage.message || '').substring(0, 50));
       
       return `
         <div class="list-group-item conversation-item" data-conversation-id="${conv._id}">
           <div class="d-flex justify-content-between align-items-start">
             <div class="flex-grow-1">
-              <h6 class="mb-1">${otherUser.name || 'User'}</h6>
-              <p class="mb-0 small text-muted">${lastMessage.message.substring(0, 50)}...</p>
+              <h6 class="mb-1">${otherUserName}</h6>
+              <p class="mb-0 small text-muted">${messagePreview}...</p>
             </div>
             <div class="text-end">
               <small class="text-muted">${this.formatTime(lastMessage.createdAt)}</small>
@@ -115,10 +118,10 @@ class ChatClient {
     const userId = this.getUserId();
 
     container.innerHTML = messages.map(msg => {
-      const isSent = msg.senderId._id === userId;
+      const isSent = (msg.senderId?._id || msg.senderId) === userId;
       return `
         <div class="chat-message ${isSent ? 'sent' : 'received'}">
-          <p class="mb-1">${msg.message}</p>
+          <p class="mb-1">${this.escape(msg.message)}</p>
           <small class="text-muted">${this.formatTime(msg.createdAt)}</small>
         </div>
       `;
@@ -144,14 +147,21 @@ class ChatClient {
     if (!container) return;
 
     const userId = this.getUserId();
-    const isSent = message.senderId === userId;
+    const isSent = (message.senderId?._id || message.senderId) === userId;
 
     const messageElement = document.createElement('div');
     messageElement.className = `chat-message ${isSent ? 'sent' : 'received'}`;
-    messageElement.innerHTML = `
-      <p class="mb-1">${message.message}</p>
-      <small class="text-muted">${this.formatTime(message.createdAt)}</small>
-    `;
+
+    const textEl = document.createElement('p');
+    textEl.className = 'mb-1';
+    textEl.textContent = message.message || '';
+
+    const timeEl = document.createElement('small');
+    timeEl.className = 'text-muted';
+    timeEl.textContent = this.formatTime(message.createdAt);
+
+    messageElement.appendChild(textEl);
+    messageElement.appendChild(timeEl);
 
     container.appendChild(messageElement);
     container.scrollTop = container.scrollHeight;

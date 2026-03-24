@@ -11,6 +11,14 @@ const Message = require('../models/Message');
 router.post('/send', protect, async (req, res) => {
   try {
     const { receiverId, message, requestId } = req.body;
+
+    if (!receiverId || typeof receiverId !== 'string') {
+      return res.status(400).json({ success: false, message: 'Valid receiverId is required' });
+    }
+
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Message cannot be empty' });
+    }
     
     // Create conversation ID (sorted user IDs)
     const conversationId = [req.user.id, receiverId].sort().join('-');
@@ -20,7 +28,7 @@ router.post('/send', protect, async (req, res) => {
       senderId: req.user.id,
       receiverId,
       requestId,
-      message,
+      message: message.trim(),
       type: 'text'
     });
     
@@ -47,12 +55,14 @@ router.post('/send', protect, async (req, res) => {
  */
 router.get('/conversations', protect, async (req, res) => {
   try {
+    const currentUserId = req.user._id;
+
     const conversations = await Message.aggregate([
       {
         $match: {
           $or: [
-            { senderId: req.user.id },
-            { receiverId: req.user.id }
+            { senderId: currentUserId },
+            { receiverId: currentUserId }
           ]
         }
       },
@@ -67,7 +77,7 @@ router.get('/conversations', protect, async (req, res) => {
             $sum: {
               $cond: [
                 { $and: [
-                  { $eq: ['$receiverId', req.user.id] },
+                  { $eq: ['$receiverId', currentUserId] },
                   { $eq: ['$read', false] }
                 ]},
                 1,
@@ -93,9 +103,23 @@ router.get('/conversations', protect, async (req, res) => {
 router.get('/messages/:conversationId', protect, async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
+    const conversationId = req.params.conversationId;
+    const participants = conversationId.split('-');
+    const currentUserId = req.user.id.toString();
+
+    if (!participants.includes(currentUserId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this conversation'
+      });
+    }
     
     const messages = await Message.find({
-      conversationId: req.params.conversationId
+      conversationId,
+      $or: [
+        { senderId: req.user.id },
+        { receiverId: req.user.id }
+      ]
     })
       .sort({ createdAt: -1 })
       .limit(limit * 1)
@@ -106,7 +130,11 @@ router.get('/messages/:conversationId', protect, async (req, res) => {
     // Mark messages as read
     await Message.updateMany(
       {
-        conversationId: req.params.conversationId,
+        conversationId,
+        $or: [
+          { senderId: req.user.id },
+          { receiverId: req.user.id }
+        ],
         receiverId: req.user.id,
         read: false
       },
