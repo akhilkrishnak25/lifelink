@@ -10,8 +10,7 @@ const emailService = require('../services/email.service');
 const User = require('../models/User');
 const certificateService = require('../services/certificate.service');
 const gamificationService = require('../services/gamification.service');
-const BlockchainService = require('../services/blockchain/blockchain.service');
-const blockchainService = new BlockchainService();
+const { blockchainService } = require('../services/blockchain/blockchain.service');
 
 /**
  * @desc    Create new blood request
