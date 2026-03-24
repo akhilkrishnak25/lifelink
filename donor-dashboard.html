@@ -186,20 +186,8 @@
         // Initialize PWA
         const pwaManager = new PWAManager();
 
-        // Initialize notifications
-        const notificationService = new NotificationService('http://localhost:5000');
-        notificationService.connect();
-        
-        // Update notification badge
-        notificationService.onNotificationReceived((notification) => {
-            const badge = document.getElementById('notificationBadge');
-            const count = parseInt(badge.textContent || '0') + 1;
-            badge.textContent = count;
-            badge.style.display = 'block';
-        });
-
         // Initialize gamification
-        const gamificationClient = new GamificationClient('http://localhost:5000');
+        const gamificationClient = new GamificationClient();
         
         // Load gamification data
         async function loadGamificationData() {

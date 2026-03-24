@@ -10,7 +10,7 @@ const Message = require('../../models/Message');
 
 class ActionExecutor {
   constructor(io) {
-    this.io = io; // Socket.IO instance for real-time notifications
+    this.io = io; // kept for backward compatibility, not used for donor notifications
     this.executionLog = [];
   }
 
@@ -135,10 +135,8 @@ class ActionExecutor {
         console.error(`❌ Failed to save notification for donor ${donor.userId._id}:`, notifError.message);
       }
 
-      // Send via Socket.IO
-      if (this.io) {
-        notificationService.sendSocketNotification(this.io, donor.userId._id, notification);
-      }
+      // Real-time socket emission is intentionally skipped.
+      // Donor view reads AI matches from persisted notifications via API polling.
 
       // Send email if configured
       if (donor.userId.email && process.env.EMAIL_USER) {
@@ -167,22 +165,7 @@ class ActionExecutor {
     // Same as notify donors but with broadcast flag
     await this._notifyDonors(donorIds, requestData, agentState);
 
-    // Also broadcast to city-based room
-    if (this.io && requestData.city) {
-      const broadcastNotification = {
-        type: 'broadcast_request',
-        title: `⚡ ${requestData.urgency.toUpperCase()} Blood Alert`,
-        message: `${requestData.bloodGroup} blood urgently needed in ${requestData.city}`,
-        data: {
-          requestId: requestData._id,
-          bloodGroup: requestData.bloodGroup,
-          city: requestData.city,
-          urgency: requestData.urgency
-        }
-      };
-
-      notificationService.broadcastToLocation(this.io, requestData.city, broadcastNotification);
-    }
+    // Real-time location broadcast is intentionally skipped.
 
     return donorIds.length;
   }
@@ -207,14 +190,7 @@ class ActionExecutor {
         timestamp: new Date()
       });
 
-      // Notify donor about chat
-      if (this.io) {
-        this.io.to(donor.userId._id.toString()).emit('chat_opened', {
-          requestId: requestData._id,
-          from: 'Blood Receiver',
-          message: chatMessage.message
-        });
-      }
+      // Real-time chat_opened emit is intentionally skipped.
 
       console.log(`💬 Chat opened with donor ${donor.userId.name}`);
     }
@@ -254,13 +230,7 @@ class ActionExecutor {
     agentState.execution.status = 'escalated';
     await agentState.save();
 
-    // Notify receiver about escalation
-    if (this.io) {
-      this.io.to(requestData.receiverId.toString()).emit('request_escalated', {
-        requestId: requestData._id,
-        message: 'We are expanding the search to find more donors for you.'
-      });
-    }
+    // Real-time escalation emit is intentionally skipped.
 
     return true;
   }
@@ -289,12 +259,7 @@ class ActionExecutor {
         }
       });
 
-      if (this.io) {
-        this.io.to(admin._id.toString()).emit('admin_alert', {
-          requestId: requestData._id,
-          urgency: requestData.urgency
-        });
-      }
+      // Real-time admin_alert emit is intentionally skipped.
     }
 
     return true;

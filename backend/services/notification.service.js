@@ -5,10 +5,15 @@ const nodemailer = require('nodemailer');
  */
 exports.sendSocketNotification = (io, userId, notification) => {
   try {
+    if (!io || !userId) {
+      return { success: false, skipped: true };
+    }
     io.to(userId.toString()).emit('notification', notification);
     console.log(`📢 Socket notification sent to user ${userId}`);
+    return { success: true };
   } catch (error) {
     console.error('Socket notification error:', error);
+    return { success: false, error: error.message };
   }
 };
 
@@ -17,10 +22,15 @@ exports.sendSocketNotification = (io, userId, notification) => {
  */
 exports.broadcastToLocation = (io, city, notification) => {
   try {
+    if (!io || !city) {
+      return { success: false, skipped: true };
+    }
     io.to(`location-${city}`).emit('notification', notification);
     console.log(`📢 Broadcast sent to location: ${city}`);
+    return { success: true };
   } catch (error) {
     console.error('Location broadcast error:', error);
+    return { success: false, error: error.message };
   }
 };
 

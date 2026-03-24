@@ -1,6 +1,8 @@
 // Donor Dashboard JavaScript
 
 let donorData = null;
+let matchedRequestsPollInterval = null;
+let unreadCountPollInterval = null;
 
 // Check authentication on page load
 if (!checkAuth()) {
@@ -40,10 +42,34 @@ window.addEventListener('DOMContentLoaded', async () => {
   await loadMatchedRequests();
   await loadNearbyRequests();
   await loadDonationHistory();
+  await loadUnreadNotificationCount();
+
+  // Poll for new AI matches and unread count instead of Socket.IO pushes.
+  matchedRequestsPollInterval = setInterval(loadMatchedRequests, 20000);
+  unreadCountPollInterval = setInterval(loadUnreadNotificationCount, 30000);
   
   // Set up availability toggle
   setupAvailabilityToggle();
 });
+
+window.addEventListener('beforeunload', () => {
+  if (matchedRequestsPollInterval) clearInterval(matchedRequestsPollInterval);
+  if (unreadCountPollInterval) clearInterval(unreadCountPollInterval);
+});
+
+async function loadUnreadNotificationCount() {
+  try {
+    const response = await apiRequest('/api/notifications/unread-count', 'GET');
+    const count = response?.count || 0;
+    const badge = document.getElementById('notificationBadge');
+    if (!badge) return;
+
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'inline-block' : 'none';
+  } catch (error) {
+    console.error('Error loading unread notification count:', error);
+  }
+}
 
 function showNoDonorProfilePrompt() {
   const container = document.querySelector('.container');
