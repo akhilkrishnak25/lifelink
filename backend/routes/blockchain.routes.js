@@ -51,8 +51,9 @@ router.post('/verify-request', protect, async (req, res) => {
 router.get('/trust-score/:userId', protect, async (req, res) => {
   try {
     const targetUserId = req.params.userId;
+    const isPrivileged = req.user.role === 'admin' || req.user.role === 'super_admin';
 
-    if (req.user.role !== 'admin' && req.user._id.toString() !== targetUserId) {
+    if (!isPrivileged && req.user._id.toString() !== targetUserId) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
@@ -69,7 +70,8 @@ router.get('/trust-score/:userId', protect, async (req, res) => {
  */
 router.get('/records', protect, async (req, res) => {
   try {
-    const userId = req.user.role === 'admin' && req.query.userId ? req.query.userId : req.user._id;
+    const isPrivileged = req.user.role === 'admin' || req.user.role === 'super_admin';
+    const userId = isPrivileged && req.query.userId ? req.query.userId : req.user._id;
     const limit = req.query.limit != null ? Number(req.query.limit) : 50;
 
     const records = await blockchainService.listRecords({ userId, limit });

@@ -11,6 +11,16 @@ const API_URL = window.location.hostname === 'localhost'
 let currentRecords = [];
 let currentTxHash = null;
 
+function getAuthContext() {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return { token, user };
+}
+
+function getCurrentUserId(user) {
+    return user?._id || user?.id || user?.userId || null;
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -80,13 +90,13 @@ function setupEventListeners() {
 // Load blockchain records
 async function loadBlockchainRecords() {
     try {
-        const user = JSON.parse(localStorage.getItem('user'));
+        const { token } = getAuthContext();
         
         showLoading();
 
         const response = await fetch(`${API_URL}/blockchain/records?limit=100`, {
             headers: {
-                'Authorization': `Bearer ${user.token}`
+                'Authorization': `Bearer ${token}`
             }
         });
 
@@ -123,11 +133,17 @@ function updateStatistics(records) {
 // Load trust score
 async function loadTrustScore() {
     try {
-        const user = JSON.parse(localStorage.getItem('user'));
+        const { token, user } = getAuthContext();
+        const userId = getCurrentUserId(user);
+
+        if (!userId) {
+            console.warn('Unable to load trust score: user ID not found');
+            return;
+        }
         
-        const response = await fetch(`${API_URL}/blockchain/trust-score/${user.userId}`, {
+        const response = await fetch(`${API_URL}/blockchain/trust-score/${userId}`, {
             headers: {
-                'Authorization': `Bearer ${user.token}`
+                'Authorization': `Bearer ${token}`
             }
         });
 
@@ -327,7 +343,7 @@ function toggleRecordFields(type) {
 // Create blockchain record
 async function createBlockchainRecord() {
     try {
-        const user = JSON.parse(localStorage.getItem('user'));
+        const { token } = getAuthContext();
         const type = document.getElementById('recordType').value;
         const ipfsHash = document.getElementById('ipfsHash').value;
         const payloadData = document.getElementById('payloadData').value;
@@ -374,7 +390,7 @@ async function createBlockchainRecord() {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${user.token}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(body)
@@ -493,11 +509,11 @@ function showRecordDetails(record) {
 // Verify transaction on blockchain
 async function verifyTransaction(txHash) {
     try {
-        const user = JSON.parse(localStorage.getItem('user'));
+        const { token } = getAuthContext();
         
         const response = await fetch(`${API_URL}/blockchain/verify/${txHash}`, {
             headers: {
-                'Authorization': `Bearer ${user.token}`
+                'Authorization': `Bearer ${token}`
             }
         });
 
