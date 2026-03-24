@@ -88,6 +88,83 @@
       border-top: 1px dashed rgba(127, 127, 127, 0.4);
       padding-top: 0.8rem;
     }
+
+    .profile-actions {
+      margin-top: 1.2rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .edit-form {
+      display: none;
+    }
+
+    .edit-form.active {
+      display: block;
+    }
+
+    .edit-form-group {
+      margin-bottom: 1rem;
+    }
+
+    .edit-form-group label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: rgba(0, 0, 0, 0.8);
+    }
+
+    [data-theme="dark"] .edit-form-group label {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .edit-form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .edit-form-group input:focus {
+      outline: none;
+      border-color: #b81f33;
+    }
+
+    [data-theme="dark"] .edit-form-group input {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    [data-theme="dark"] .edit-form-group input:focus {
+      border-color: #db4b5f;
+    }
+
+    .edit-form-group .error {
+      color: #d32f2f;
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+      display: none;
+    }
+
+    .edit-form-group .error.show {
+      display: block;
+    }
+
+    .edit-form-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1.2rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -133,7 +210,34 @@
 
       <div class="card">
         <div class="card-header">Account Details</div>
-        <div id="profileBox">Loading...</div>
+        
+        <!-- View Mode -->
+        <div id="viewMode">
+          <div id="profileBox">Loading...</div>
+          <div class="profile-actions">
+            <button class="btn btn-primary" id="editBtn">✏️ Edit Profile</button>
+          </div>
+        </div>
+
+        <!-- Edit Mode -->
+        <div class="edit-form" id="editForm">
+          <div class="edit-form-group">
+            <label for="editName">Full Name</label>
+            <input type="text" id="editName" placeholder="Enter your full name" maxlength="100" />
+            <div class="error" id="editNameError"></div>
+          </div>
+
+          <div class="edit-form-group">
+            <label for="editPhone">Phone Number</label>
+            <input type="tel" id="editPhone" placeholder="Enter 10-digit phone number" maxlength="10" />
+            <div class="error" id="editPhoneError"></div>
+          </div>
+
+          <div class="edit-form-actions">
+            <button class="btn btn-primary" id="saveBtn">💾 Save Changes</button>
+            <button class="btn btn-secondary" id="cancelBtn">✕ Cancel</button>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -143,33 +247,212 @@
   <script>
     const user = Session.getUser();
     const box = document.getElementById('profileBox');
+    const editForm = document.getElementById('editForm');
+    const viewMode = document.getElementById('viewMode');
+    const editBtn = document.getElementById('editBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const editNameInput = document.getElementById('editName');
+    const editPhoneInput = document.getElementById('editPhone');
 
-    const name = escapeHTML(user?.name || 'Not set');
-    const email = escapeHTML(user?.email || 'Not set');
-    const phone = escapeHTML(user?.phone || 'Not set');
-    const role = escapeHTML(user?.role || 'user');
+    // Display user profile in view mode
+    function displayProfile() {
+      const name = escapeHTML(user?.name || 'Not set');
+      const email = escapeHTML(user?.email || 'Not set');
+      const phone = escapeHTML(user?.phone || 'Not set');
+      const role = escapeHTML(user?.role || 'user');
 
-    box.innerHTML = `
-      <div class="profile-grid">
-        <div class="profile-item">
-          <span class="profile-label">Name</span>
-          <span class="profile-value">${name}</span>
+      box.innerHTML = `
+        <div class="profile-grid">
+          <div class="profile-item">
+            <span class="profile-label">Name</span>
+            <span class="profile-value">${name}</span>
+          </div>
+          <div class="profile-item">
+            <span class="profile-label">Email</span>
+            <span class="profile-value">${email}</span>
+          </div>
+          <div class="profile-item">
+            <span class="profile-label">Phone</span>
+            <span class="profile-value">${phone}</span>
+          </div>
+          <div class="profile-item">
+            <span class="profile-label">Role</span>
+            <span class="role-pill">${role}</span>
+          </div>
         </div>
-        <div class="profile-item">
-          <span class="profile-label">Email</span>
-          <span class="profile-value">${email}</span>
-        </div>
-        <div class="profile-item">
-          <span class="profile-label">Phone</span>
-          <span class="profile-value">${phone}</span>
-        </div>
-        <div class="profile-item">
-          <span class="profile-label">Role</span>
-          <span class="role-pill">${role}</span>
-        </div>
-      </div>
-      <p class="profile-note">Donor and Receiver are usage modes available from the sidebar navigation.</p>
-    `;
+        <p class="profile-note">Donor and Receiver are usage modes available from the sidebar navigation.</p>
+      `;
+    }
+
+    // Initialize profile display
+    displayProfile();
+
+    // Edit mode toggle
+    editBtn.addEventListener('click', () => {
+      // Populate form with current values
+      editNameInput.value = user?.name || '';
+      editPhoneInput.value = user?.phone || '';
+      
+      // Clear errors
+      clearErrors();
+      
+      // Show edit form, hide view mode
+      viewMode.classList.add('hidden');
+      editForm.classList.add('active');
+      editNameInput.focus();
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      // Clear form and errors
+      editNameInput.value = '';
+      editPhoneInput.value = '';
+      clearErrors();
+      
+      // Show view mode, hide edit form
+      editForm.classList.remove('active');
+      viewMode.classList.remove('hidden');
+    });
+
+    // Validation functions
+    function clearErrors() {
+      document.getElementById('editNameError').classList.remove('show');
+      document.getElementById('editPhoneError').classList.remove('show');
+    }
+
+    function validateForm() {
+      clearErrors();
+      let isValid = true;
+      const name = editNameInput.value.trim();
+      const phone = editPhoneInput.value.trim();
+
+      // Validate name
+      if (!name) {
+        showError('editNameError', 'Name is required');
+        isValid = false;
+      } else if (name.length < 2) {
+        showError('editNameError', 'Name must be at least 2 characters');
+        isValid = false;
+      } else if (name.length > 100) {
+        showError('editNameError', 'Name cannot exceed 100 characters');
+        isValid = false;
+      }
+
+      // Validate phone
+      if (!phone) {
+        showError('editPhoneError', 'Phone number is required');
+        isValid = false;
+      } else if (!/^[0-9]{10}$/.test(phone)) {
+        showError('editPhoneError', 'Please enter a valid 10-digit phone number');
+        isValid = false;
+      }
+
+      return isValid;
+    }
+
+    function showError(elementId, message) {
+      const errorEl = document.getElementById(elementId);
+      errorEl.textContent = message;
+      errorEl.classList.add('show');
+    }
+
+    // Save changes
+    saveBtn.addEventListener('click', async () => {
+      if (!validateForm()) {
+        return;
+      }
+
+      const name = editNameInput.value.trim();
+      const phone = editPhoneInput.value.trim();
+
+      // Disable button and show loading state
+      saveBtn.disabled = true;
+      const originalText = saveBtn.textContent;
+      saveBtn.textContent = '⏳ Saving...';
+
+      try {
+        const response = await fetch('/api/auth/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Session.getToken()}`
+          },
+          body: JSON.stringify({ name, phone })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showError('editNameError', data.message || 'Error updating profile');
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          return;
+        }
+
+        // Update local session with new data
+        if (data.data) {
+          Session.setUser(data.data);
+          user.name = data.data.name;
+          user.phone = data.data.phone;
+        }
+
+        // Show success message
+        showAlert('Profile updated successfully!', 'success');
+
+        // Return to view mode
+        editForm.classList.remove('active');
+        viewMode.classList.remove('hidden');
+        displayProfile();
+
+        // Update sidebar
+        const sidebarUserName = document.getElementById('sidebarUserName');
+        if (sidebarUserName) {
+          sidebarUserName.textContent = data.data?.name || 'User';
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        showError('editNameError', 'Failed to update profile. Please try again.');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+      }
+    });
+
+    // Real-time validation
+    editNameInput.addEventListener('blur', () => {
+      const name = editNameInput.value.trim();
+      const error = document.getElementById('editNameError');
+      
+      if (!name) {
+        showError('editNameError', 'Name is required');
+      } else if (name.length < 2) {
+        showError('editNameError', 'Name must be at least 2 characters');
+      } else if (name.length > 100) {
+        showError('editNameError', 'Name cannot exceed 100 characters');
+      } else {
+        error.classList.remove('show');
+      }
+    });
+
+    editPhoneInput.addEventListener('blur', () => {
+      const phone = editPhoneInput.value.trim();
+      const error = document.getElementById('editPhoneError');
+      
+      if (!phone) {
+        showError('editPhoneError', 'Phone number is required');
+      } else if (!/^[0-9]{10}$/.test(phone)) {
+        showError('editPhoneError', 'Please enter a valid 10-digit phone number');
+      } else {
+        error.classList.remove('show');
+      }
+    });
+
+    // Allow Enter key to save
+    editForm.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !saveBtn.disabled) {
+        saveBtn.click();
+      }
+    });
   </script>
 </body>
 </html>

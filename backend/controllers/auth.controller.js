@@ -229,10 +229,63 @@ exports.updateProfile = async (req, res) => {
   try {
     const { name, phone } = req.body;
 
+    // Validation
+    if (!name && !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide at least one field to update (name or phone)'
+      });
+    }
+
+    // Validate name if provided
+    if (name) {
+      if (typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Name must be a non-empty string'
+        });
+      }
+      if (name.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'Name must be at least 2 characters'
+        });
+      }
+      if (name.length > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Name cannot exceed 100 characters'
+        });
+      }
+    }
+
+    // Validate phone if provided
+    if (phone) {
+      if (typeof phone !== 'string' || phone.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Phone number must be a non-empty string'
+        });
+      }
+      if (!/^[0-9]{10}$/.test(phone.trim())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid 10-digit phone number'
+        });
+      }
+    }
+
     const user = await User.findById(req.user.id);
 
-    if (name) user.name = name;
-    if (phone) user.phone = phone;
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (name) user.name = name.trim();
+    if (phone) user.phone = phone.trim();
 
     await user.save();
 
@@ -243,6 +296,16 @@ exports.updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('Update profile error:', error);
+    
+    // Handle validation errors from schema
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: messages[0] || 'Validation error'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Error updating profile'
