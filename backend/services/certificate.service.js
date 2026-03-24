@@ -96,144 +96,123 @@ class CertificateService {
       .trim()
       .slice(0, maxLen);
 
-    const safeDonorName = normalize(donorName || 'Donor', 48);
-    const safeHospitalName = normalize(hospitalName || 'Hospital', 70);
-    const safeCity = normalize(city || '', 40);
+    const safeDonorName = normalize(donorName || 'Donor', 48).toUpperCase();
+    const safeHospitalName = normalize(hospitalName || 'Hospital', 72);
+    const safeCity = normalize(city || '', 36);
 
-    // Draw decorative border
     this._drawBorder(doc, pageWidth, pageHeight);
 
-    // Draw header with LifeLink logo text
-    doc.fontSize(40)
-       .font('Helvetica-Bold')
-       .fillColor('#C41E3A')
-       .text('LIFELINK', centerX - 120, 60);
+    doc.font('Helvetica-Bold').fontSize(38).fillColor('#C41E3A')
+      .text('LIFELINK', 0, 58, { width: pageWidth, align: 'center', lineBreak: false });
 
-    doc.fontSize(12)
-       .font('Helvetica')
-       .fillColor('#333333')
-       .text('Blood Donor Network', centerX - 80, 110);
+    doc.font('Helvetica').fontSize(12).fillColor('#333333')
+      .text('Blood Donor Network', 0, 104, { width: pageWidth, align: 'center', lineBreak: false });
 
-    // Draw blood drop icon (simple circle with gradient effect)
-    doc.circle(centerX, 160, 25)
-       .fillAndStroke('#C41E3A', '#8B0000');
+    doc.circle(centerX, 150, 20).fillAndStroke('#C41E3A', '#8B0000');
 
-    // Certificate Title
-    doc.fontSize(36)
-       .font('Helvetica-Bold')
-       .fillColor('#2C3E50')
-       .text('CERTIFICATE OF APPRECIATION', 50, 220, {
-         width: pageWidth - 100,
-         align: 'center'
-       });
+    doc.font('Helvetica-Bold').fontSize(30).fillColor('#2C3E50')
+      .text('CERTIFICATE OF APPRECIATION', 40, 192, { width: pageWidth - 80, align: 'center', lineBreak: false });
 
-    // Subtitle line
-    doc.moveTo(centerX - 200, 270)
-       .lineTo(centerX + 200, 270)
-       .strokeColor('#C41E3A')
-       .lineWidth(2)
-       .stroke();
+    doc.moveTo(centerX - 190, 235)
+      .lineTo(centerX + 190, 235)
+      .strokeColor('#C41E3A')
+      .lineWidth(2)
+      .stroke();
 
-    // Main content
-    doc.fontSize(16)
-       .font('Helvetica')
-       .fillColor('#555555')
-       .text('This is to certify that', 50, 310, {
-         width: pageWidth - 100,
-         align: 'center'
-       });
+    doc.font('Helvetica').fontSize(15).fillColor('#555555')
+      .text('This is to certify that', 40, 260, { width: pageWidth - 80, align: 'center', lineBreak: false });
 
-    // Donor name (highlighted)
-    doc.fontSize(32)
-       .font('Helvetica-Bold')
-       .fillColor('#C41E3A')
-       .text(safeDonorName.toUpperCase(), 50, 350, {
-         width: pageWidth - 100,
-         align: 'center',
-         height: 42,
-         ellipsis: true
-       });
+    const donorNameText = this._truncateToWidth(doc, safeDonorName, pageWidth - 120, 'Helvetica-Bold', 28);
+    doc.font('Helvetica-Bold').fontSize(28).fillColor('#C41E3A')
+      .text(donorNameText, 60, 288, { width: pageWidth - 120, align: 'center', lineBreak: false });
 
-    // Donation details
-    const donationText = `has generously donated ${unitsGiven} unit(s) of ${bloodGroup} blood at ${safeHospitalName}${safeCity ? `, ${safeCity}` : ''} on ${this._formatDate(donationDate)}. Your selfless act of kindness has the power to save lives and bring hope to those in need.`;
+    const donationSentence = `has generously donated ${unitsGiven} unit(s) of ${bloodGroup} blood at ${safeHospitalName}${safeCity ? `, ${safeCity}` : ''} on ${this._formatDate(donationDate)}.`;
+    const messageSentence = 'Your selfless act of kindness has the power to save lives and bring hope to those in need.';
+    const wrappedMain = this._wrapLines(doc, `${donationSentence} ${messageSentence}`, pageWidth - 180, 4, 'Helvetica', 13);
 
-    doc.fontSize(14)
-       .font('Helvetica')
-       .fillColor('#333333')
-       .text(donationText, 80, 410, {
-         width: pageWidth - 160,
-         align: 'center',
-         lineGap: 4,
-         height: 78,
-         ellipsis: true
-       });
+    doc.font('Helvetica').fontSize(13).fillColor('#333333')
+      .text(wrappedMain.join('\n'), 90, 340, {
+        width: pageWidth - 180,
+        align: 'center',
+        lineGap: 4,
+        lineBreak: true
+      });
 
-    // Appreciation message
-    doc.fontSize(16)
-       .font('Helvetica-Bold')
-       .fillColor('#2C3E50')
-       .text('Thank you for being a life saver!', 50, 480, {
-         width: pageWidth - 100,
-         align: 'center'
-       });
+    doc.font('Helvetica-Bold').fontSize(15).fillColor('#2C3E50')
+      .text('Thank you for being a life saver!', 40, 430, { width: pageWidth - 80, align: 'center', lineBreak: false });
 
-    // Footer section with signatures
-    const footerY = pageHeight - 95;
+    const footerY = pageHeight - 84;
 
-    // Certificate number
-    doc.fontSize(10)
-       .font('Helvetica')
-       .fillColor('#888888')
-       .text(`Certificate No: ${certificateNumber}`, 60, footerY);
+    doc.font('Helvetica').fontSize(10).fillColor('#888888')
+      .text(`Certificate No: ${certificateNumber}`, 60, footerY, { lineBreak: false });
 
-    // Date of issue
-    doc.text(`Date of Issue: ${this._formatDate(new Date())}`, pageWidth - 260, footerY);
+    doc.text(`Date of Issue: ${this._formatDate(new Date())}`, pageWidth - 265, footerY, { lineBreak: false });
 
-    // Signature lines
-    const signatureY = footerY + 20;
+    const signatureY = pageHeight - 58;
 
-    // Left signature - Medical Director
-    doc.moveTo(100, signatureY)
-       .lineTo(250, signatureY)
-       .strokeColor('#CCCCCC')
-       .lineWidth(1)
-       .stroke();
+    doc.moveTo(100, signatureY).lineTo(250, signatureY).strokeColor('#CCCCCC').lineWidth(1).stroke();
+    doc.moveTo(pageWidth - 250, signatureY).lineTo(pageWidth - 100, signatureY).strokeColor('#CCCCCC').lineWidth(1).stroke();
 
-    doc.fontSize(11)
-       .font('Helvetica-Bold')
-       .fillColor('#333333')
-       .text('Medical Director', 100, signatureY + 10, { width: 150, align: 'center' });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
+      .text('Medical Director', 100, signatureY + 6, { width: 150, align: 'center', lineBreak: false });
+    doc.font('Helvetica').fontSize(9).fillColor('#666666')
+      .text('LifeLink Medical Team', 100, signatureY + 20, { width: 150, align: 'center', lineBreak: false });
 
-    doc.fontSize(9)
-       .font('Helvetica')
-       .fillColor('#666666')
-       .text('LifeLink Medical Team', 100, signatureY + 28, { width: 150, align: 'center' });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
+      .text('Chief Executive Officer', pageWidth - 250, signatureY + 6, { width: 150, align: 'center', lineBreak: false });
+    doc.font('Helvetica').fontSize(9).fillColor('#666666')
+      .text('LifeLink Foundation', pageWidth - 250, signatureY + 20, { width: 150, align: 'center', lineBreak: false });
 
-    // Right signature - Chief Executive
-    doc.moveTo(pageWidth - 250, signatureY)
-       .lineTo(pageWidth - 100, signatureY)
-       .strokeColor('#CCCCCC')
-       .lineWidth(1)
-       .stroke();
+    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#C41E3A')
+      .text('"Every Drop Counts, Every Donor Matters"', 40, pageHeight - 24, {
+        width: pageWidth - 80,
+        align: 'center',
+        lineBreak: false
+      });
 
-    doc.fontSize(11)
-       .font('Helvetica-Bold')
-       .fillColor('#333333')
-       .text('Chief Executive Officer', pageWidth - 250, signatureY + 10, { width: 150, align: 'center' });
+  }
 
-    doc.fontSize(9)
-       .font('Helvetica')
-       .fillColor('#666666')
-       .text('LifeLink Foundation', pageWidth - 250, signatureY + 28, { width: 150, align: 'center' });
+  _truncateToWidth(doc, text, width, font = 'Helvetica', fontSize = 12) {
+    doc.font(font).fontSize(fontSize);
+    if (doc.widthOfString(text) <= width) {
+      return text;
+    }
 
-    // Bottom tagline
-    doc.fontSize(11)
-       .font('Helvetica-Oblique')
-       .fillColor('#C41E3A')
-       .text('"Every Drop Counts, Every Donor Matters"', 50, pageHeight - 30, {
-         width: pageWidth - 100,
-         align: 'center'
-       });
+    let value = text;
+    while (value.length > 1 && doc.widthOfString(`${value}...`) > width) {
+      value = value.slice(0, -1);
+    }
+    return `${value}...`;
+  }
+
+  _wrapLines(doc, text, width, maxLines, font = 'Helvetica', fontSize = 12) {
+    doc.font(font).fontSize(fontSize);
+    const words = String(text || '').split(' ');
+    const lines = [];
+    let current = '';
+
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (doc.widthOfString(candidate) <= width) {
+        current = candidate;
+      } else {
+        lines.push(current || word);
+        current = current ? word : '';
+        if (lines.length >= maxLines - 1) {
+          break;
+        }
+      }
+    }
+
+    if (current && lines.length < maxLines) {
+      lines.push(current);
+    }
+
+    if (lines.length === maxLines) {
+      lines[maxLines - 1] = this._truncateToWidth(doc, lines[maxLines - 1], width, font, fontSize);
+    }
+
+    return lines;
   }
 
   /**
