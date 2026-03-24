@@ -371,7 +371,7 @@
                 const token = localStorage.getItem('token');
                 
                 if (!token) {
-                    window.location.href = '/login.html';
+                    window.location.href = 'login.html';
                     return;
                 }
                 
@@ -384,6 +384,23 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
+                    // If donor profile is missing, show a guided empty state.
+                    if (response.status === 404 && /Donor profile not found/i.test(data.message || '')) {
+                        certificates = [];
+                        updateStats();
+                        document.getElementById('certificatesContainer').innerHTML = `
+                            <div class="empty-state">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">🩸</div>
+                                <h3>Create Donor Profile First</h3>
+                                <p>You need a donor profile before certificates can be generated.</p>
+                                <button class="btn btn-primary" style="margin-top: 1rem;" onclick="window.location.href='donor-dashboard.html'">
+                                    Complete Donor Profile
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+
                     throw new Error(data.message || 'Failed to load certificates');
                 }
                 
@@ -411,6 +428,14 @@
             if (!window.Session || !Session.requireAuth()) {
                 return;
             }
+
+            const user = Session.getUser();
+            const allowedRoles = ['user', 'donor', 'admin', 'super_admin'];
+            if (!user || !allowedRoles.includes((user.role || '').trim().toLowerCase())) {
+                window.location.href = 'home.html';
+                return;
+            }
+
             loadCertificates();
         });
     </script>
