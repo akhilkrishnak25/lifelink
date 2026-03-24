@@ -91,9 +91,14 @@ class CertificateService {
     const pageHeight = doc.page.height;
     const centerX = pageWidth / 2;
 
-    const safeDonorName = String(donorName || 'Donor').trim().slice(0, 48);
-    const safeHospitalName = String(hospitalName || 'Hospital').trim().slice(0, 70);
-    const safeCity = String(city || '').trim().slice(0, 40);
+    const normalize = (value, maxLen) => String(value || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, maxLen);
+
+    const safeDonorName = normalize(donorName || 'Donor', 48);
+    const safeHospitalName = normalize(hospitalName || 'Hospital', 70);
+    const safeCity = normalize(city || '', 40);
 
     // Draw decorative border
     this._drawBorder(doc, pageWidth, pageHeight);

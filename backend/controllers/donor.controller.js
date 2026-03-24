@@ -9,8 +9,8 @@ const certificateService = require('../services/certificate.service');
 const path = require('path');
 const fs = require('fs');
 
-async function ensureCertificateFile({ donation, donor, donorName }) {
-  const needsGeneration = !donation.certificatePath || !fs.existsSync(donation.certificatePath);
+async function ensureCertificateFile({ donation, donor, donorName, forceRegenerate = false }) {
+  const needsGeneration = forceRegenerate || !donation.certificatePath || !fs.existsSync(donation.certificatePath);
 
   if (!needsGeneration) {
     return donation.certificatePath;
@@ -538,7 +538,8 @@ exports.downloadCertificate = async (req, res) => {
       await ensureCertificateFile({
         donation,
         donor,
-        donorName: req.user?.name || 'Donor'
+        donorName: req.user?.name || 'Donor',
+        forceRegenerate: true
       });
     } catch (generationError) {
         console.error('Certificate regeneration error:', generationError);
@@ -603,7 +604,8 @@ exports.regenerateCertificate = async (req, res) => {
     await ensureCertificateFile({
       donation,
       donor,
-      donorName: req.user?.name || 'Donor'
+      donorName: req.user?.name || 'Donor',
+      forceRegenerate: true
     });
 
     res.json({
