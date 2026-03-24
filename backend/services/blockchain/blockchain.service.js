@@ -9,6 +9,7 @@
 
 const crypto = require('crypto');
 const BlockchainRecord = require('../../models/BlockchainRecord');
+const DonationHistory = require('../../models/DonationHistory');
 
 function sha256Hex(input) {
   return crypto.createHash('sha256').update(input).digest('hex');
@@ -147,6 +148,74 @@ class BlockchainService {
       .limit(Math.min(limit, 200));
 
     return records;
+  }
+
+  /**
+   * Backfill missing blockchain donation records from historical donation history.
+   * Creates records only for donations that do not already have a donation_record entry.
+   */
+  async backfillDonationRecords({ limit = 100 } = {}) {
+    const cappedLimit = Math.min(Math.max(Number(limit) || 100, 1), 500);
+
+    const donationHistories = await DonationHistory.find({ status: 'completed' })
+      .populate('donorId', 'userId')
+      .sort({ createdAt: -1 })
+      .limit(cappedLimit)
+      .lean();
+
+    if (!donationHistories.length) {
+      return { scanned: 0, created: 0, skipped: 0 };
+    }
+
+    const donationIds = donationHistories.map(d => d._id);
+
+    const existingRecords = await BlockchainRecord.find({
+      action: 'donation_record',
+      donationId: { $in: donationIds }
+    })
+      .select('donationId')
+      .lean();
+
+    const existingDonationIdSet = new Set(existingRecords.map(r => String(r.donationId)));
+
+    let created = 0;
+    let skipped = 0;
+
+    for (const donation of donationHistories) {
+      const donationId = String(donation._id);
+      if (existingDonationIdSet.has(donationId)) {
+        skipped += 1;
+        continue;
+      }
+
+      const donorUserId = donation?.donorId?.userId;
+      if (!donorUserId) {
+        skipped += 1;
+        continue;
+      }
+
+      await this.createDonationRecord({
+        userId: donorUserId,
+        donationId: donation._id,
+        payload: {
+          donationId,
+          requestId: donation.requestId?.toString(),
+          donorId: donation.donorId?._id?.toString?.() || donation.donorId?.toString?.(),
+          bloodGroup: donation.bloodGroup,
+          unitsGiven: donation.unitsGiven,
+          hospitalName: donation.hospitalName,
+          donationDate: (donation.donationDate || donation.createdAt || new Date()).toISOString()
+        }
+      });
+
+      created += 1;
+    }
+
+    return {
+      scanned: donationHistories.length,
+      created,
+      skipped
+    };
   }
 }
 

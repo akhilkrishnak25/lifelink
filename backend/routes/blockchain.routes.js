@@ -82,6 +82,25 @@ router.get('/records', protect, async (req, res) => {
 });
 
 /**
+ * POST /api/blockchain/backfill
+ * Admin-only backfill for historical donation records.
+ */
+router.post('/backfill', protect, authorize('admin', 'super_admin'), async (req, res) => {
+  try {
+    const limit = req.body?.limit != null ? Number(req.body.limit) : 100;
+    const result = await blockchainService.backfillDonationRecords({ limit });
+
+    res.json({
+      success: true,
+      message: 'Blockchain backfill completed',
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+/**
  * Admin: verify a tx hash (adapter-based)
  */
 router.get('/verify/:txHash', protect, authorize('admin'), async (req, res) => {

@@ -10,6 +10,7 @@ const API_URL = window.location.hostname === 'localhost'
 
 let currentRecords = [];
 let currentTxHash = null;
+let backfillAttempted = false;
 
 function getAuthContext() {
     const token = localStorage.getItem('token');
@@ -94,7 +95,7 @@ function setupEventListeners() {
 // Load blockchain records
 async function loadBlockchainRecords() {
     try {
-        const { token } = getAuthContext();
+        const { token, user } = getAuthContext();
         
         showLoading();
 
@@ -112,6 +113,13 @@ async function loadBlockchainRecords() {
 
         if (result.success) {
             currentRecords = result.data || [];
+
+            if (currentRecords.length === 0 && isPrivilegedRole(user) && !backfillAttempted) {
+                backfillAttempted = true;
+                await runBackfill();
+                return loadBlockchainRecords();
+            }
+
             updateStatistics(currentRecords);
             displayRecords(currentRecords);
         } else {
@@ -120,6 +128,35 @@ async function loadBlockchainRecords() {
     } catch (error) {
         console.error('Error loading blockchain records:', error);
         showEmpty();
+    }
+}
+
+async function runBackfill() {
+    try {
+        const { token } = getAuthContext();
+        if (!token) {
+            return;
+        }
+
+        const response = await fetch(`${API_URL}/blockchain/backfill`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ limit: 200 })
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const result = await response.json();
+        if (result?.success && result?.data?.created > 0) {
+            showToast(`Backfilled ${result.data.created} blockchain record(s)`);
+        }
+    } catch (error) {
+        console.error('Error running blockchain backfill:', error);
     }
 }
 
