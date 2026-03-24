@@ -408,7 +408,9 @@
         
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
-            checkAuth();
+            if (!window.Session || !Session.requireAuth()) {
+                return;
+            }
             loadCertificates();
         });
     </script>
