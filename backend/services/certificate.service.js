@@ -91,6 +91,10 @@ class CertificateService {
     const pageHeight = doc.page.height;
     const centerX = pageWidth / 2;
 
+    const safeDonorName = String(donorName || 'Donor').trim().slice(0, 48);
+    const safeHospitalName = String(hospitalName || 'Hospital').trim().slice(0, 70);
+    const safeCity = String(city || '').trim().slice(0, 40);
+
     // Draw decorative border
     this._drawBorder(doc, pageWidth, pageHeight);
 
@@ -138,13 +142,15 @@ class CertificateService {
     doc.fontSize(32)
        .font('Helvetica-Bold')
        .fillColor('#C41E3A')
-       .text(donorName.toUpperCase(), 50, 350, {
+       .text(safeDonorName.toUpperCase(), 50, 350, {
          width: pageWidth - 100,
-         align: 'center'
+         align: 'center',
+         height: 42,
+         ellipsis: true
        });
 
     // Donation details
-    const donationText = `has generously donated ${unitsGiven} unit(s) of ${bloodGroup} blood at ${hospitalName}, ${city || ''} on ${this._formatDate(donationDate)}. Your selfless act of kindness has the power to save lives and bring hope to those in need.`;
+    const donationText = `has generously donated ${unitsGiven} unit(s) of ${bloodGroup} blood at ${safeHospitalName}${safeCity ? `, ${safeCity}` : ''} on ${this._formatDate(donationDate)}. Your selfless act of kindness has the power to save lives and bring hope to those in need.`;
 
     doc.fontSize(14)
        .font('Helvetica')
@@ -152,7 +158,9 @@ class CertificateService {
        .text(donationText, 80, 410, {
          width: pageWidth - 160,
          align: 'center',
-         lineGap: 5
+         lineGap: 4,
+         height: 78,
+         ellipsis: true
        });
 
     // Appreciation message
@@ -165,7 +173,7 @@ class CertificateService {
        });
 
     // Footer section with signatures
-    const footerY = 520;
+    const footerY = pageHeight - 95;
 
     // Certificate number
     doc.fontSize(10)
@@ -177,7 +185,7 @@ class CertificateService {
     doc.text(`Date of Issue: ${this._formatDate(new Date())}`, pageWidth - 260, footerY);
 
     // Signature lines
-    const signatureY = footerY + 30;
+    const signatureY = footerY + 20;
 
     // Left signature - Medical Director
     doc.moveTo(100, signatureY)
@@ -217,7 +225,7 @@ class CertificateService {
     doc.fontSize(11)
        .font('Helvetica-Oblique')
        .fillColor('#C41E3A')
-       .text('"Every Drop Counts, Every Donor Matters"', 50, pageHeight - 40, {
+       .text('"Every Drop Counts, Every Donor Matters"', 50, pageHeight - 30, {
          width: pageWidth - 100,
          align: 'center'
        });
