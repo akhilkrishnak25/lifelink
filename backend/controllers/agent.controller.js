@@ -210,9 +210,20 @@ exports.getSystemPerformance = async (req, res) => {
       });
     }
 
+    // Build request lookup for historical fallback when learning fields are missing.
+    const requestIds = states.map(s => s.requestId).filter(Boolean);
+    const requests = await BloodRequest.find({ _id: { $in: requestIds } })
+      .select('_id status acceptedDonorId createdAt completedAt')
+      .lean();
+    const requestMap = new Map(requests.map(r => [r._id.toString(), r]));
+
     // Calculate aggregated metrics
     const totalRequests = states.length;
-    const matchedRequests = states.filter(s => s.learning?.finalOutcome?.matched).length;
+    const matchedRequests = states.filter(s => {
+      if (s.learning?.finalOutcome?.matched) return true;
+      const reqData = requestMap.get(s.requestId?.toString?.());
+      return Boolean(reqData && reqData.status === 'completed' && reqData.acceptedDonorId);
+    }).length;
     const overallMatchRate = (matchedRequests / totalRequests) * 100;
 
     // Strategy breakdown
@@ -227,9 +238,21 @@ exports.getSystemPerformance = async (req, res) => {
       const strategy = state.decision?.strategyType;
       if (strategy && strategyStats[strategy]) {
         strategyStats[strategy].count++;
-        if (state.learning?.finalOutcome?.matched) {
+        const reqData = requestMap.get(state.requestId?.toString?.());
+        const isMatched = Boolean(
+          state.learning?.finalOutcome?.matched ||
+          (reqData && reqData.status === 'completed' && reqData.acceptedDonorId)
+        );
+
+        if (isMatched) {
           strategyStats[strategy].matched++;
-          strategyStats[strategy].avgTime += state.learning.finalOutcome.totalTimeMinutes || 0;
+
+          const fallbackTime = reqData?.completedAt
+            ? (new Date(reqData.completedAt) - new Date(state.createdAt)) / (1000 * 60)
+            : 0;
+
+          strategyStats[strategy].avgTime +=
+            state.learning?.finalOutcome?.totalTimeMinutes || fallbackTime || 0;
         }
       }
     });
@@ -256,9 +279,21 @@ exports.getSystemPerformance = async (req, res) => {
       const urgency = state.observation?.urgency;
       if (urgency && urgencyStats[urgency]) {
         urgencyStats[urgency].count++;
-        if (state.learning?.finalOutcome?.matched) {
+        const reqData = requestMap.get(state.requestId?.toString?.());
+        const isMatched = Boolean(
+          state.learning?.finalOutcome?.matched ||
+          (reqData && reqData.status === 'completed' && reqData.acceptedDonorId)
+        );
+
+        if (isMatched) {
           urgencyStats[urgency].matched++;
-          urgencyStats[urgency].avgTime += state.learning.finalOutcome.totalTimeMinutes || 0;
+
+          const fallbackTime = reqData?.completedAt
+            ? (new Date(reqData.completedAt) - new Date(state.createdAt)) / (1000 * 60)
+            : 0;
+
+          urgencyStats[urgency].avgTime +=
+            state.learning?.finalOutcome?.totalTimeMinutes || fallbackTime || 0;
         }
       }
     });
@@ -282,15 +317,62 @@ exports.getSystemPerformance = async (req, res) => {
     let metricsCount = 0;
 
     states.forEach(state => {
-      if (state.learning?.performanceMetrics) {
-        const metrics = state.learning.performanceMetrics;
+      const reqData = requestMap.get(state.requestId?.toString?.());
+      const metrics = state.learning?.performanceMetrics;
+
+      if (metrics && Object.keys(metrics).length > 0) {
         totalResponseRate += metrics.responseRate || 0;
         totalSuccessRate += metrics.successRate || 0;
         totalAvgResponseTime += metrics.avgResponseTime || 0;
         totalStrategyEffectiveness += metrics.strategyEffectiveness || 0;
         totalPredictionAccuracy += metrics.predictionAccuracy || 0;
         metricsCount++;
+        return;
       }
+
+      // Historical fallback for states without populated learning metrics.
+      const responses = state.learning?.donorResponses || [];
+      const contacted = state.execution?.donorsContacted?.length || 0;
+      const accepted = responses.filter(r => r.accepted).length;
+
+      const responseRate = contacted > 0 ? (responses.length / contacted) * 100 : 0;
+      const successRate = responses.length > 0 ? (accepted / responses.length) * 100 : 0;
+
+      let avgResponseTime = responses.length > 0
+        ? responses.reduce((sum, r) => sum + (r.responseTimeMinutes || 0), 0) / responses.length
+        : 0;
+
+      if (!avgResponseTime && reqData?.completedAt) {
+        avgResponseTime = (new Date(reqData.completedAt) - new Date(state.createdAt)) / (1000 * 60);
+      }
+
+      const accuracyScores = responses
+        .map(r => r?.predictedVsActual?.accuracyScore)
+        .filter(v => typeof v === 'number' && v > 0);
+
+      const predictionAccuracy = accuracyScores.length > 0
+        ? accuracyScores.reduce((sum, v) => sum + v, 0) / accuracyScores.length
+        : 0;
+
+      const isMatched = Boolean(
+        state.learning?.finalOutcome?.matched ||
+        (reqData && reqData.status === 'completed' && reqData.acceptedDonorId)
+      );
+
+      const totalTime = state.learning?.finalOutcome?.totalTimeMinutes || avgResponseTime;
+      const urgency = state.observation?.urgency || 'normal';
+      const thresholds = { critical: 30, urgent: 60, normal: 120 };
+      const threshold = thresholds[urgency] || 120;
+      const strategyEffectiveness = isMatched
+        ? Math.max(0, Math.min(1, 1 - (totalTime / threshold)))
+        : 0;
+
+      totalResponseRate += responseRate || 0;
+      totalSuccessRate += successRate || 0;
+      totalAvgResponseTime += avgResponseTime || 0;
+      totalStrategyEffectiveness += strategyEffectiveness || 0;
+      totalPredictionAccuracy += predictionAccuracy || 0;
+      metricsCount++;
     });
 
     const averageMetrics = metricsCount > 0 ? {
