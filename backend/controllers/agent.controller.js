@@ -319,14 +319,33 @@ exports.getSystemPerformance = async (req, res) => {
     states.forEach(state => {
       const reqData = requestMap.get(state.requestId?.toString?.());
       const metrics = state.learning?.performanceMetrics;
+      const requestStatus = reqData?.status;
+      const isFinalizedByRequest = ['completed', 'cancelled', 'rejected', 'flagged', 'review'].includes(requestStatus);
+      const hasFinalOutcome = typeof state.learning?.finalOutcome?.matched === 'boolean';
+      const isFinalized = hasFinalOutcome || isFinalizedByRequest;
 
-      if (metrics && Object.keys(metrics).length > 0) {
+      const hasUsableMetrics = Boolean(
+        metrics && (
+          (metrics.responseRate || 0) > 0 ||
+          (metrics.successRate || 0) > 0 ||
+          (metrics.avgResponseTime || 0) > 0 ||
+          (metrics.strategyEffectiveness || 0) > 0 ||
+          (metrics.predictionAccuracy || 0) > 0
+        )
+      );
+
+      if (hasUsableMetrics) {
         totalResponseRate += metrics.responseRate || 0;
         totalSuccessRate += metrics.successRate || 0;
         totalAvgResponseTime += metrics.avgResponseTime || 0;
         totalStrategyEffectiveness += metrics.strategyEffectiveness || 0;
         totalPredictionAccuracy += metrics.predictionAccuracy || 0;
         metricsCount++;
+        return;
+      }
+
+      // Skip in-progress requests when deriving historical aggregate metrics.
+      if (!isFinalized) {
         return;
       }
 
@@ -350,7 +369,7 @@ exports.getSystemPerformance = async (req, res) => {
         .map(r => r?.predictedVsActual?.accuracyScore)
         .filter(v => typeof v === 'number' && v > 0);
 
-      const predictionAccuracy = accuracyScores.length > 0
+      let predictionAccuracy = accuracyScores.length > 0
         ? accuracyScores.reduce((sum, v) => sum + v, 0) / accuracyScores.length
         : 0;
 
@@ -358,6 +377,14 @@ exports.getSystemPerformance = async (req, res) => {
         state.learning?.finalOutcome?.matched ||
         (reqData && reqData.status === 'completed' && reqData.acceptedDonorId)
       );
+
+      // Fallback prediction accuracy inference when explicit predicted-vs-actual data is absent.
+      if (!predictionAccuracy) {
+        const topPredictedSuccess = state.decision?.rankedDonors?.[0]?.successProbability;
+        if (typeof topPredictedSuccess === 'number') {
+          predictionAccuracy = 1 - Math.abs(topPredictedSuccess - (isMatched ? 1 : 0));
+        }
+      }
 
       const totalTime = state.learning?.finalOutcome?.totalTimeMinutes || avgResponseTime;
       const urgency = state.observation?.urgency || 'normal';

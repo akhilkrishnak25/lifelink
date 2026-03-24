@@ -116,8 +116,9 @@ function updateMetricsDisplay(data) {
     document.getElementById('totalRequests').textContent = data.totalRequests || 0;
     document.getElementById('matchRate').textContent = 
         (data.overallMatchRate || 0).toFixed(1) + '%';
+    const avgResponse = Number(averageMetrics.avgResponseTime || 0);
     document.getElementById('avgResponseTime').textContent = 
-        Math.round(averageMetrics.avgResponseTime || 0) + 'm';
+        avgResponse.toFixed(1) + 'm';
     document.getElementById('predictionAccuracy').textContent = 
         (averageMetrics.predictionAccuracy || 0).toFixed(1) + '%';
 }
