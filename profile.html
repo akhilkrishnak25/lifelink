@@ -7,6 +7,88 @@
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/dark-mode.css" />
   <link rel="stylesheet" href="css/sidebar.css" />
+  <style>
+    .profile-hero {
+      background: linear-gradient(120deg, #b81f33 0%, #db4b5f 55%, #f8b6bf 100%);
+      color: #fff;
+      border-radius: 14px;
+      padding: 1.4rem;
+      box-shadow: 0 10px 24px rgba(184, 31, 51, 0.22);
+      margin-bottom: 1.2rem;
+    }
+
+    .profile-hero h2 {
+      margin: 0 0 0.3rem 0;
+      letter-spacing: 0.2px;
+    }
+
+    .profile-hero p {
+      margin: 0;
+      opacity: 0.95;
+      font-size: 0.95rem;
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.85rem;
+      margin-top: 0.8rem;
+    }
+
+    .profile-item {
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
+      padding: 0.9rem;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    [data-theme="dark"] .profile-item {
+      background: rgba(26, 33, 43, 0.85);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .profile-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      opacity: 0.75;
+      margin-bottom: 0.25rem;
+    }
+
+    .profile-value {
+      font-size: 1.02rem;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .role-pill {
+      display: inline-block;
+      padding: 0.28rem 0.72rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: #ffe5e8;
+      color: #8b1a2a;
+      border: 1px solid #f6b6bf;
+    }
+
+    [data-theme="dark"] .role-pill {
+      background: rgba(184, 31, 51, 0.3);
+      color: #ffd7dd;
+      border-color: rgba(248, 182, 191, 0.45);
+    }
+
+    .profile-note {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      opacity: 0.75;
+      border-top: 1px dashed rgba(127, 127, 127, 0.4);
+      padding-top: 0.8rem;
+    }
+  </style>
 </head>
 <body>
   <script src="js/session.js"></script>
@@ -44,8 +126,13 @@
     <main class="content">
       <div id="alertContainer"></div>
 
+      <div class="profile-hero">
+        <h2>My Profile</h2>
+        <p>Manage your account details and view your current role in the LifeLink platform.</p>
+      </div>
+
       <div class="card">
-        <div class="card-header">User Profile</div>
+        <div class="card-header">Account Details</div>
         <div id="profileBox">Loading...</div>
       </div>
     </main>
@@ -56,12 +143,32 @@
   <script>
     const user = Session.getUser();
     const box = document.getElementById('profileBox');
+
+    const name = escapeHTML(user?.name || 'Not set');
+    const email = escapeHTML(user?.email || 'Not set');
+    const phone = escapeHTML(user?.phone || 'Not set');
+    const role = escapeHTML(user?.role || 'user');
+
     box.innerHTML = `
-      <p><strong>Name:</strong> ${user?.name || ''}</p>
-      <p><strong>Email:</strong> ${user?.email || ''}</p>
-      <p><strong>Phone:</strong> ${user?.phone || ''}</p>
-      <p><strong>Role:</strong> ${user?.role || 'user'}</p>
-      <p style="opacity:.75;">(Donor/Receiver are mode views you can switch from sidebar)</p>
+      <div class="profile-grid">
+        <div class="profile-item">
+          <span class="profile-label">Name</span>
+          <span class="profile-value">${name}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Email</span>
+          <span class="profile-value">${email}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Phone</span>
+          <span class="profile-value">${phone}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Role</span>
+          <span class="role-pill">${role}</span>
+        </div>
+      </div>
+      <p class="profile-note">Donor and Receiver are usage modes available from the sidebar navigation.</p>
     `;
   </script>
 </body>
