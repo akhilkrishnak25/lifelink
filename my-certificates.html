@@ -375,11 +375,16 @@
                     return;
                 }
                 
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+
                 const response = await fetch(`${API_BASE_URL}/donor/certificates`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
-                    }
+                    },
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
                 
                 const data = await response.json();
                 
@@ -425,11 +430,27 @@
         
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
-            if (!window.Session || !Session.requireAuth()) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
                 return;
             }
 
-            const user = Session.getUser();
+            let user = null;
+            if (window.Session && typeof Session.requireAuth === 'function') {
+                if (!Session.requireAuth()) {
+                    return;
+                }
+                user = Session.getUser();
+            } else {
+                // Fallback when session helper script fails to load.
+                try {
+                    user = JSON.parse(localStorage.getItem('user') || '{}');
+                } catch (e) {
+                    user = null;
+                }
+            }
+
             const allowedRoles = ['user', 'donor', 'admin', 'super_admin'];
             if (!user || !allowedRoles.includes((user.role || '').trim().toLowerCase())) {
                 window.location.href = 'home.html';
