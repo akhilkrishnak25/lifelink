@@ -29,10 +29,18 @@ function isPrivilegedRole(user) {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
+    ensureStatsSectionVisible();
     loadBlockchainRecords();
     loadTrustScore();
     setupEventListeners();
 });
+
+function ensureStatsSectionVisible() {
+    const statsSection = document.getElementById('statsSection');
+    if (statsSection) {
+        statsSection.style.display = 'flex';
+    }
+}
 
 // Check authentication
 function checkAuth() {
