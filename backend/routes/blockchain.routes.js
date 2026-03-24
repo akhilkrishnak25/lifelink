@@ -71,7 +71,7 @@ router.get('/trust-score/:userId', protect, async (req, res) => {
 router.get('/records', protect, async (req, res) => {
   try {
     const isPrivileged = req.user.role === 'admin' || req.user.role === 'super_admin';
-    const userId = isPrivileged && req.query.userId ? req.query.userId : req.user._id;
+    const userId = isPrivileged ? (req.query.userId || undefined) : req.user._id;
     const limit = req.query.limit != null ? Number(req.query.limit) : 50;
 
     const records = await blockchainService.listRecords({ userId, limit });

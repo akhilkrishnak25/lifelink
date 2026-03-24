@@ -21,6 +21,10 @@ function getCurrentUserId(user) {
     return user?._id || user?.id || user?.userId || null;
 }
 
+function isPrivilegedRole(user) {
+    return user?.role === 'admin' || user?.role === 'super_admin';
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -128,12 +132,25 @@ function updateStatistics(records) {
     document.getElementById('totalRecords').textContent = total;
     document.getElementById('confirmedRecords').textContent = confirmed;
     document.getElementById('pendingRecords').textContent = pending;
+
+    const { user } = getAuthContext();
+    if (isPrivilegedRole(user)) {
+        const trustScore = total > 0 ? Math.round((confirmed / total) * 100) : 0;
+        document.getElementById('trustScore').textContent = trustScore;
+    }
 }
 
 // Load trust score
 async function loadTrustScore() {
     try {
         const { token, user } = getAuthContext();
+
+        // For admin/super_admin, show platform trust score from loaded records.
+        // Skip user-specific trust API call, which can misleadingly return 0 for admin users.
+        if (isPrivilegedRole(user)) {
+            return;
+        }
+
         const userId = getCurrentUserId(user);
 
         if (!userId) {

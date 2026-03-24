@@ -137,7 +137,12 @@ class BlockchainService {
    * List blockchain/audit records for a user (admin/user)
    */
   async listRecords({ userId, limit = 50 }) {
-    const records = await BlockchainRecord.find({ userId })
+    const query = {};
+    if (userId) {
+      query.userId = userId;
+    }
+
+    const records = await BlockchainRecord.find(query)
       .sort({ createdAt: -1 })
       .limit(Math.min(limit, 200));
 
