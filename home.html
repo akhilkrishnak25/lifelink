@@ -97,11 +97,11 @@
         </p>
       </div>
 
-      <div class="card">
+      <div class="card" id="quickStatsCard">
         <div class="card-header">Your Quick Stats</div>
       </div>
 
-      <div class="dashboard-grid">
+      <div class="dashboard-grid" id="quickStatsGrid">
         <div class="stat-card">
           <h3 id="dashDonations">--</h3>
           <p><strong>My Donations</strong></p>
@@ -192,19 +192,32 @@
     // Refresh stats every 30 seconds
     setInterval(loadSystemStats, 30000);
 
-    // Show admin navigation if user is admin
+    function isPrivilegedRole(role) {
+      return role === 'admin' || role === 'super_admin';
+    }
+
+    // Show admin navigation if user is admin/super_admin
     const user = Session.getUser();
-    if (user && user.role === 'admin') {
+    if (user && isPrivilegedRole(user.role)) {
       // Hide regular navigation for admins
       document.getElementById('regularNav').style.display = 'none';
       // Show admin navigation
       document.getElementById('adminSection').style.display = 'block';
       document.getElementById('adminNav').style.display = 'block';
+
+      // Hide user-specific cards for privileged accounts
+      document.getElementById('quickStatsCard').style.display = 'none';
+      document.getElementById('quickStatsGrid').style.display = 'none';
+      document.getElementById('donorPromptCard').style.display = 'none';
     }
 
     // Fetch dashboard data
     (async function loadDashboard() {
       try {
+        if (user && isPrivilegedRole(user.role)) {
+          return;
+        }
+
         const res = await apiRequest('/api/auth/dashboard');
         if (res.success) {
           document.getElementById('dashDonations').textContent = res.data.myDonations;
