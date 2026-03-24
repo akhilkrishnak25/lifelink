@@ -5,6 +5,7 @@ const Notification = require('../models/Notification');
 const geoService = require('../services/geo.service');
 const AgentController = require('../services/agent/agent.controller');
 const AgentState = require('../models/AgentState');
+const certificateService = require('../services/certificate.service');
 const path = require('path');
 const fs = require('fs');
 
@@ -505,19 +506,35 @@ exports.downloadCertificate = async (req, res) => {
       });
     }
 
-    if (!donation.certificatePath) {
-      return res.status(404).json({
-        success: false,
-        message: 'Certificate not yet generated for this donation'
-      });
-    }
+    const needsGeneration = !donation.certificatePath || !fs.existsSync(donation.certificatePath);
 
-    // Check if certificate file exists
-    if (!fs.existsSync(donation.certificatePath)) {
-      return res.status(404).json({
-        success: false,
-        message: 'Certificate file not found'
-      });
+    if (needsGeneration) {
+      try {
+        const donorName = req.user?.name || 'Donor';
+        const certNumber = donation.certificateNumber || certificateService.generateCertificateNumber(donor._id, donation.donationDate || new Date());
+
+        const generatedPath = await certificateService.generateCertificate({
+          donorName,
+          donorId: donor._id,
+          bloodGroup: donation.bloodGroup,
+          unitsGiven: donation.unitsGiven,
+          hospitalName: donation.hospitalName,
+          donationDate: donation.donationDate || new Date(),
+          certificateNumber: certNumber,
+          city: 'N/A'
+        });
+
+        donation.certificateNumber = certNumber;
+        donation.certificatePath = generatedPath;
+        donation.certificateGeneratedAt = new Date();
+        await donation.save();
+      } catch (generationError) {
+        console.error('Certificate regeneration error:', generationError);
+        return res.status(500).json({
+          success: false,
+          message: 'Certificate file is unavailable and regeneration failed'
+        });
+      }
     }
 
     // Send file for download
@@ -563,9 +580,10 @@ exports.getCertificates = async (req, res) => {
     // Find all donations with certificates
     const donations = await DonationHistory.find({
       donorId: donor._id,
+      status: 'completed',
       certificateNumber: { $exists: true, $ne: null }
     })
-    .select('certificateNumber certificateGeneratedAt bloodGroup unitsGiven hospitalName donationDate')
+    .select('certificateNumber certificatePath certificateGeneratedAt bloodGroup unitsGiven hospitalName donationDate')
     .sort({ donationDate: -1 });
 
     res.json({
@@ -579,6 +597,7 @@ exports.getCertificates = async (req, res) => {
         hospitalName: d.hospitalName,
         donationDate: d.donationDate,
         generatedAt: d.certificateGeneratedAt,
+        downloadable: Boolean(d.certificatePath),
         downloadUrl: `/api/donor/certificate/${d._id}`
       }))
     });

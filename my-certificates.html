@@ -264,7 +264,16 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error('Failed to download certificate');
+                    let message = 'Failed to download certificate';
+                    try {
+                        const errPayload = await response.json();
+                        if (errPayload?.message) {
+                            message = errPayload.message;
+                        }
+                    } catch (e) {
+                        // Ignore json parsing errors and keep generic message.
+                    }
+                    throw new Error(message);
                 }
                 
                 const blob = await response.blob();
@@ -280,7 +289,7 @@
                 showAlert('Certificate downloaded successfully!', 'success');
             } catch (error) {
                 console.error('Download error:', error);
-                showAlert('Failed to download certificate', 'error');
+                showAlert(error.message || 'Failed to download certificate', 'error');
             }
         }
         
