@@ -4,6 +4,17 @@ let donorData = null;
 let matchedRequestsPollInterval = null;
 let unreadCountPollInterval = null;
 
+function getCurrentUserId() {
+  const user = getUserData() || {};
+  return user._id || user.id || user.userId || null;
+}
+
+function isOwnRequest(request) {
+  const currentUserId = getCurrentUserId();
+  const receiverId = request?.receiverId?._id || request?.receiverId;
+  return Boolean(currentUserId && receiverId && receiverId.toString() === currentUserId.toString());
+}
+
 // Check authentication on page load
 if (!checkAuth()) {
   window.location.href = 'login.html';
@@ -206,9 +217,10 @@ async function loadMatchedRequests() {
 
   try {
     const response = await apiRequest('/api/donor/matched-requests', 'GET');
+    const visibleRequests = (response?.data || []).filter(request => !isOwnRequest(request));
     
-    if (response.success && response.data.length > 0) {
-      container.innerHTML = response.data.map(request => `
+    if (response.success && visibleRequests.length > 0) {
+      container.innerHTML = visibleRequests.map(request => `
         <div class="request-card ${request.urgency}" style="border-left: 4px solid #10b981;">
           <div class="request-header">
             <div>
@@ -288,9 +300,10 @@ async function loadNearbyRequests() {
 
   try {
     const response = await apiRequest('/api/donor/nearby-requests', 'GET');
+    const visibleRequests = (response?.data || []).filter(request => !isOwnRequest(request));
     
-    if (response.success && response.data.length > 0) {
-      container.innerHTML = response.data.map(request => `
+    if (response.success && visibleRequests.length > 0) {
+      container.innerHTML = visibleRequests.map(request => `
         <div class="request-card ${request.urgency}">
           <div class="request-header">
             <div>

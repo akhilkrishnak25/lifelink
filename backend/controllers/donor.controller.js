@@ -148,8 +148,13 @@ exports.getNearbyRequests = async (req, res) => {
       req.user.id
     );
 
-    // Add donor's response status to each request
-    const requestsWithStatus = requests.map(request => {
+    // Add donor's response status and ensure self-created requests are hidden.
+    const requestsWithStatus = requests
+      .filter(request => {
+        const receiverId = request?.receiverId?._id?.toString?.() || request?.receiverId?.toString?.();
+        return receiverId !== req.user.id.toString();
+      })
+      .map(request => {
       const donorResponse = request.interestedDonors?.find(
         d => d.donorId.toString() === donor._id.toString()
       );
@@ -158,7 +163,7 @@ exports.getNearbyRequests = async (req, res) => {
         ...request,
         donorStatus: donorResponse ? donorResponse.status : null
       };
-    });
+      });
 
     res.json({
       success: true,
@@ -379,7 +384,12 @@ exports.getMatchedRequests = async (req, res) => {
     console.log(`[getMatchedRequests] Found ${requests.length} blood requests matching IDs`);
 
     // Enrich requests with AI data from notifications
-    const enrichedRequests = requests.map(request => {
+    const enrichedRequests = requests
+      .filter(request => {
+        const receiverId = request?.receiverId?._id?.toString?.() || request?.receiverId?.toString?.();
+        return receiverId !== req.user.id.toString();
+      })
+      .map(request => {
       const notification = notifications.find(
         n => n.data.requestId.toString() === request._id.toString()
       );
@@ -396,7 +406,7 @@ exports.getMatchedRequests = async (req, res) => {
           notificationRead: notification?.read || false
         }
       };
-    });
+      });
 
     // Sort by AI score (highest first), then by creation date
     enrichedRequests.sort((a, b) => {
