@@ -91,6 +91,10 @@ class LearningService {
 
     agentState.learning.feedbackCollectedAt = new Date();
 
+    // Keep execution status aligned with final outcome for dashboard/reporting.
+    agentState.execution.status = outcomeData.matched ? 'completed' : 'failed';
+    agentState.lastUpdated = new Date();
+
     await agentState.save();
 
     console.log(`📊 Final outcome recorded: Matched=${outcomeData.matched}, Time=${totalTimeMinutes.toFixed(1)}min, Strategy=${agentState.decision.strategyType}`);

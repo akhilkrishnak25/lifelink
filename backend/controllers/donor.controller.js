@@ -206,6 +206,13 @@ exports.acceptRequest = async (req, res) => {
       });
     }
 
+    if (request.receiverId?.toString() === req.user.id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot accept your own blood request'
+      });
+    }
+
     // Check if donor already responded
     const alreadyResponded = request.interestedDonors.some(
       d => d.donorId.toString() === donor._id.toString()
@@ -365,6 +372,7 @@ exports.getMatchedRequests = async (req, res) => {
     // Fetch the actual blood requests
     const requests = await BloodRequest.find({
       _id: { $in: requestIds },
+      receiverId: { $ne: req.user.id },
       status: { $in: ['pending', 'approved'] } //Only active requests
     }).populate('receiverId', 'name phone email');
     

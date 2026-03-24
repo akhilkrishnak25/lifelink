@@ -96,6 +96,12 @@ class ActionExecutor {
 
     for (const donor of donors) {
       console.log(`📣 [_notifyDonors] Processing donor ${donor._id}...`);
+
+      // Never notify requester as a donor for their own blood request.
+      if (donor?.userId?._id?.toString() === requestData.receiverId?.toString()) {
+        console.log(`⚠️  [_notifyDonors] Skipping donor ${donor._id} - self request`);
+        continue;
+      }
       
       if (!donor.userId) {
         console.log(`⚠️  [_notifyDonors] Skipping donor ${donor._id} - no userId`);
@@ -180,6 +186,10 @@ class ActionExecutor {
 
     for (const donor of donors) {
       if (!donor.userId) continue;
+
+      if (donor.userId._id.toString() === requestData.receiverId?.toString()) {
+        continue;
+      }
 
       // Create initial chat message
       const chatMessage = await Message.create({

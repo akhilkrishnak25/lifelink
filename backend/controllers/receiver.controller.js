@@ -496,6 +496,22 @@ exports.completeRequest = async (req, res) => {
       console.error('⚠️ Blockchain recording error:', blockchainError.message);
     }
 
+    // 🤖 Finalize AgentState so dashboard no longer shows stale PENDING after completion.
+    try {
+      const io = req.app.get('io');
+      const agentController = new AgentController(io);
+      await agentController.recordFinalOutcome(request._id, {
+        matched: true,
+        matchedDonorId: request.acceptedDonorId,
+        donationCompleted: true,
+        adminIntervention: false
+      });
+      console.log(`✅ Agent final outcome recorded for request ${request._id}`);
+    } catch (agentFinalizeError) {
+      // Don't block completion flow if agent finalization fails.
+      console.error('⚠️ Agent final outcome recording error:', agentFinalizeError.message);
+    }
+
     res.json({
       success: true,
       message: 'Request marked as completed. Certificate generated successfully!',
