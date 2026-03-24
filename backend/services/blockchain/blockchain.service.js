@@ -10,6 +10,7 @@
 const crypto = require('crypto');
 const BlockchainRecord = require('../../models/BlockchainRecord');
 const DonationHistory = require('../../models/DonationHistory');
+const BloodRequest = require('../../models/BloodRequest');
 
 function sha256Hex(input) {
   return crypto.createHash('sha256').update(input).digest('hex');
@@ -211,10 +212,71 @@ class BlockchainService {
       created += 1;
     }
 
-    return {
+    const donationBackfill = {
       scanned: donationHistories.length,
       created,
       skipped
+    };
+
+    const completedRequests = await BloodRequest.find({ status: 'completed' })
+      .sort({ completedAt: -1, updatedAt: -1, createdAt: -1 })
+      .limit(cappedLimit)
+      .lean();
+
+    const requestIds = completedRequests.map(r => r._id);
+    const existingRequestRecords = await BlockchainRecord.find({
+      action: 'request_verification',
+      requestId: { $in: requestIds }
+    })
+      .select('requestId')
+      .lean();
+
+    const existingRequestIdSet = new Set(existingRequestRecords.map(r => String(r.requestId)));
+
+    let requestCreated = 0;
+    let requestSkipped = 0;
+
+    for (const request of completedRequests) {
+      const requestId = String(request._id);
+      if (existingRequestIdSet.has(requestId)) {
+        requestSkipped += 1;
+        continue;
+      }
+
+      if (!request.receiverId) {
+        requestSkipped += 1;
+        continue;
+      }
+
+      await this.verifyRequest({
+        userId: request.receiverId,
+        requestId: request._id,
+        payload: {
+          requestId,
+          receiverId: request.receiverId?.toString?.(),
+          bloodGroup: request.bloodGroup,
+          urgency: request.urgency,
+          status: request.status,
+          unitsRequired: request.unitsRequired,
+          hospitalName: request.hospitalName,
+          city: request.city,
+          completedAt: (request.completedAt || request.updatedAt || request.createdAt || new Date()).toISOString()
+        }
+      });
+
+      requestCreated += 1;
+    }
+
+    return {
+      scanned: donationBackfill.scanned + completedRequests.length,
+      created: donationBackfill.created + requestCreated,
+      skipped: donationBackfill.skipped + requestSkipped,
+      donationBackfill,
+      requestBackfill: {
+        scanned: completedRequests.length,
+        created: requestCreated,
+        skipped: requestSkipped
+      }
     };
   }
 }
