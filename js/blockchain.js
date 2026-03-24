@@ -29,20 +29,10 @@ function isPrivilegedRole(user) {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
-    configureAdminView();
     loadBlockchainRecords();
     loadTrustScore();
     setupEventListeners();
 });
-
-function configureAdminView() {
-    const { user } = getAuthContext();
-    const statsSection = document.getElementById('statsSection');
-
-    if (statsSection && isPrivilegedRole(user)) {
-        statsSection.style.display = 'none';
-    }
-}
 
 // Check authentication
 function checkAuth() {
