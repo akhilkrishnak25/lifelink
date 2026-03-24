@@ -1,5 +1,6 @@
 const AgentController = require('../services/agent/agent.controller');
 const AgentState = require('../models/AgentState');
+const BloodRequest = require('../models/BloodRequest');
 
 /**
  * @desc    Get AI system insights (last 7 days)
@@ -318,6 +319,115 @@ exports.getSystemPerformance = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching system performance'
+    });
+  }
+};
+
+/**
+ * @desc    Backfill missing final outcomes for historical agent states
+ * @route   POST /api/agent/backfill-outcomes
+ * @access  Admin only
+ */
+exports.backfillAgentOutcomes = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.body?.limit, 10) || 200, 1), 2000);
+    const force = Boolean(req.body?.force);
+
+    const query = force
+      ? {}
+      : {
+          $or: [
+            { 'learning.feedbackCollectedAt': { $exists: false } },
+            { 'learning.feedbackCollectedAt': null }
+          ]
+        };
+
+    const states = await AgentState.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('requestId', 'status acceptedDonorId completedAt');
+
+    if (states.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No agent states found for backfill',
+        data: {
+          scanned: 0,
+          updated: 0,
+          skipped: 0,
+          failed: 0
+        }
+      });
+    }
+
+    const agentController = new AgentController(req.app.get('io'));
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const state of states) {
+      try {
+        const requestId = state.requestId?._id || state.requestId;
+        if (!requestId) {
+          skipped += 1;
+          continue;
+        }
+
+        const request = state.requestId?._id
+          ? state.requestId
+          : await BloodRequest.findById(requestId).select('status acceptedDonorId completedAt');
+
+        if (!request) {
+          skipped += 1;
+          continue;
+        }
+
+        if (request.status === 'completed') {
+          await agentController.recordFinalOutcome(requestId, {
+            matched: Boolean(request.acceptedDonorId),
+            matchedDonorId: request.acceptedDonorId || null,
+            donationCompleted: true,
+            adminIntervention: false
+          });
+          updated += 1;
+          continue;
+        }
+
+        if (['cancelled', 'rejected', 'flagged', 'review'].includes(request.status)) {
+          await agentController.recordFinalOutcome(requestId, {
+            matched: false,
+            matchedDonorId: null,
+            donationCompleted: false,
+            adminIntervention: request.status === 'review' || request.status === 'flagged'
+          });
+          updated += 1;
+          continue;
+        }
+
+        // Pending/approved requests are still in progress; don't finalize them.
+        skipped += 1;
+      } catch (itemError) {
+        console.error('Agent outcome backfill item error:', itemError.message);
+        failed += 1;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Agent outcomes backfill completed',
+      data: {
+        scanned: states.length,
+        updated,
+        skipped,
+        failed
+      }
+    });
+  } catch (error) {
+    console.error('Backfill agent outcomes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error backfilling agent outcomes',
+      error: error.message
     });
   }
 };

@@ -6,7 +6,8 @@ const {
   getRequestAgentState,
   getAllAgentStates,
   triggerEscalation,
-  getSystemPerformance
+  getSystemPerformance,
+  backfillAgentOutcomes
 } = require('../controllers/agent.controller');
 
 // All routes protected - admin only
@@ -19,5 +20,6 @@ router.get('/request/:requestId/state', getRequestAgentState);
 router.get('/states', getAllAgentStates);
 router.post('/request/:requestId/escalate', triggerEscalation);
 router.get('/performance', getSystemPerformance);
+router.post('/backfill-outcomes', backfillAgentOutcomes);
 
 module.exports = router;
