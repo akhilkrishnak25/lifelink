@@ -12,6 +12,10 @@ let currentPage = 1;
 let currentRequestId = null;
 let performanceChart = null;
 
+function getAuthToken() {
+    return localStorage.getItem('token') || '';
+}
+
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -69,12 +73,16 @@ function setupEventListeners() {
 // Load performance metrics
 async function loadPerformanceMetrics() {
     try {
-        const user = JSON.parse(localStorage.getItem('user'));
         const days = document.getElementById('filterDays')?.value || 30;
+        const token = getAuthToken();
+
+        if (!token) {
+            return;
+        }
 
         const response = await fetch(`${API_URL}/agent/performance?days=${days}`, {
             headers: {
-                'Authorization': `Bearer ${user.token}`
+                'Authorization': `Bearer ${token}`
             }
         });
 
@@ -95,6 +103,8 @@ async function loadPerformanceMetrics() {
 
 // Update metrics display
 function updateMetricsDisplay(data) {
+    const averageMetrics = data.averageMetrics || {};
+
     if (data.dataPoints === 0) {
         document.getElementById('totalRequests').textContent = '0';
         document.getElementById('matchRate').textContent = '0%';
@@ -107,17 +117,21 @@ function updateMetricsDisplay(data) {
     document.getElementById('matchRate').textContent = 
         (data.overallMatchRate || 0).toFixed(1) + '%';
     document.getElementById('avgResponseTime').textContent = 
-        Math.round(data.avgResponseTime || 0) + 'm';
+        Math.round(averageMetrics.avgResponseTime || 0) + 'm';
     document.getElementById('predictionAccuracy').textContent = 
-        (data.avgPredictionAccuracy || 0).toFixed(1) + '%';
+        (averageMetrics.predictionAccuracy || 0).toFixed(1) + '%';
 }
 
 // Load agent states
 async function loadAgentStates(page = 1) {
     try {
-        const user = JSON.parse(localStorage.getItem('user'));
         const strategy = document.getElementById('filterStrategy')?.value || '';
         const urgency = document.getElementById('filterUrgency')?.value || '';
+        const token = getAuthToken();
+
+        if (!token) {
+            throw new Error('Authentication token missing');
+        }
         
         showLoading();
 
@@ -125,7 +139,7 @@ async function loadAgentStates(page = 1) {
             `${API_URL}/agent/states?page=${page}&limit=10`, 
             {
                 headers: {
-                    'Authorization': `Bearer ${user.token}`
+                    'Authorization': `Bearer ${token}`
                 }
             }
         );
@@ -330,11 +344,15 @@ function displayPagination(pagination) {
 // Show agent state details in modal
 async function showAgentStateDetails(stateId) {
     try {
-        const user = JSON.parse(localStorage.getItem('user'));
+        const token = getAuthToken();
+
+        if (!token) {
+            throw new Error('Authentication token missing');
+        }
         
         // Find the state from current list or fetch it
         const response = await fetch(`${API_URL}/agent/states`, {
-            headers: { 'Authorization': `Bearer ${user.token}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
 
         const result = await response.json();
@@ -610,12 +628,16 @@ async function triggerEscalation(requestId) {
     }
 
     try {
-        const user = JSON.parse(localStorage.getItem('user'));
+        const token = getAuthToken();
+
+        if (!token) {
+            throw new Error('Authentication token missing');
+        }
         
         const response = await fetch(`${API_URL}/agent/request/${requestId}/escalate`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${user.token}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
