@@ -256,8 +256,9 @@
         async function downloadCertificate(donationId, certificateNumber) {
             try {
                 const token = localStorage.getItem('token');
+                const downloadUrl = `${API_BASE_URL}/donor/certificate/${donationId}`;
                 
-                const response = await fetch(`${API_BASE_URL}/donor/certificate/${donationId}`, {
+                let response = await fetch(downloadUrl, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -273,7 +274,33 @@
                     } catch (e) {
                         // Ignore json parsing errors and keep generic message.
                     }
-                    throw new Error(message);
+
+                    // Auto-regenerate once when file is missing/unavailable.
+                    if (/file not found|unavailable/i.test(message)) {
+                        const regenResponse = await fetch(`${API_BASE_URL}/donor/certificate/${donationId}/regenerate`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (regenResponse.ok) {
+                            response = await fetch(downloadUrl, {
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Certificate regeneration succeeded but download still failed');
+                            }
+                        } else {
+                            throw new Error('Certificate file missing and regeneration failed');
+                        }
+                    } else {
+                        throw new Error(message);
+                    }
                 }
                 
                 const blob = await response.blob();

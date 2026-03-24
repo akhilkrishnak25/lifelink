@@ -9,6 +9,34 @@ const certificateService = require('../services/certificate.service');
 const path = require('path');
 const fs = require('fs');
 
+async function ensureCertificateFile({ donation, donor, donorName }) {
+  const needsGeneration = !donation.certificatePath || !fs.existsSync(donation.certificatePath);
+
+  if (!needsGeneration) {
+    return donation.certificatePath;
+  }
+
+  const certNumber = donation.certificateNumber || certificateService.generateCertificateNumber(donor._id, donation.donationDate || new Date());
+
+  const generatedPath = await certificateService.generateCertificate({
+    donorName,
+    donorId: donor._id,
+    bloodGroup: donation.bloodGroup,
+    unitsGiven: donation.unitsGiven,
+    hospitalName: donation.hospitalName,
+    donationDate: donation.donationDate || new Date(),
+    certificateNumber: certNumber,
+    city: 'N/A'
+  });
+
+  donation.certificateNumber = certNumber;
+  donation.certificatePath = generatedPath;
+  donation.certificateGeneratedAt = new Date();
+  await donation.save();
+
+  return generatedPath;
+}
+
 /**
  * @desc    Get or create donor profile
  * @route   GET /api/donor/profile
@@ -506,35 +534,18 @@ exports.downloadCertificate = async (req, res) => {
       });
     }
 
-    const needsGeneration = !donation.certificatePath || !fs.existsSync(donation.certificatePath);
-
-    if (needsGeneration) {
-      try {
-        const donorName = req.user?.name || 'Donor';
-        const certNumber = donation.certificateNumber || certificateService.generateCertificateNumber(donor._id, donation.donationDate || new Date());
-
-        const generatedPath = await certificateService.generateCertificate({
-          donorName,
-          donorId: donor._id,
-          bloodGroup: donation.bloodGroup,
-          unitsGiven: donation.unitsGiven,
-          hospitalName: donation.hospitalName,
-          donationDate: donation.donationDate || new Date(),
-          certificateNumber: certNumber,
-          city: 'N/A'
-        });
-
-        donation.certificateNumber = certNumber;
-        donation.certificatePath = generatedPath;
-        donation.certificateGeneratedAt = new Date();
-        await donation.save();
-      } catch (generationError) {
+    try {
+      await ensureCertificateFile({
+        donation,
+        donor,
+        donorName: req.user?.name || 'Donor'
+      });
+    } catch (generationError) {
         console.error('Certificate regeneration error:', generationError);
         return res.status(500).json({
           success: false,
           message: 'Certificate file is unavailable and regeneration failed'
         });
-      }
     }
 
     // Send file for download
@@ -557,6 +568,58 @@ exports.downloadCertificate = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error downloading certificate'
+    });
+  }
+};
+
+/**
+ * @desc    Regenerate certificate file for a donation
+ * @route   POST /api/donor/certificate/:donationId/regenerate
+ * @access  Private (Donor only)
+ */
+exports.regenerateCertificate = async (req, res) => {
+  try {
+    const donor = await Donor.findOne({ userId: req.user.id });
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donor profile not found'
+      });
+    }
+
+    const donation = await DonationHistory.findOne({
+      _id: req.params.donationId,
+      donorId: donor._id
+    });
+
+    if (!donation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donation record not found'
+      });
+    }
+
+    await ensureCertificateFile({
+      donation,
+      donor,
+      donorName: req.user?.name || 'Donor'
+    });
+
+    res.json({
+      success: true,
+      message: 'Certificate regenerated successfully',
+      data: {
+        donationId: donation._id,
+        certificateNumber: donation.certificateNumber,
+        downloadUrl: `/api/donor/certificate/${donation._id}`
+      }
+    });
+  } catch (error) {
+    console.error('Regenerate certificate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error regenerating certificate'
     });
   }
 };

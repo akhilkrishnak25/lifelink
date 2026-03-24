@@ -12,6 +12,7 @@ const {
   getDonationHistory,
   getStats,
   downloadCertificate,
+  regenerateCertificate,
   getCertificates
 } = require('../controllers/donor.controller');
 
@@ -32,5 +33,6 @@ router.get('/stats', getStats);
 // Certificate routes
 router.get('/certificates', getCertificates);
 router.get('/certificate/:donationId', downloadCertificate);
+router.post('/certificate/:donationId/regenerate', regenerateCertificate);
 
 module.exports = router;
