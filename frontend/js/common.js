@@ -1,6 +1,6 @@
 // Common JavaScript utilities and API functions
 
-const API_BASE_URL = 'https://lifelink-3-fqca.onrender.com';
+const API_BASE_URL = 'https://lifelink-dmvb.onrender.com';
 
 /**
  * Fetch with timeout

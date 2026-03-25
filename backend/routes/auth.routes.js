@@ -8,6 +8,8 @@ const {
 const {
   register,
   login,
+  googleLogin,
+  getGoogleConfig,
   getMe,
   updateProfile,
   logout,
@@ -23,6 +25,8 @@ const {
 // Public routes - Registration & Login
 router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
+router.get('/google-config', getGoogleConfig);
+router.post('/google-login', googleLogin);
 
 // Public routes - Email OTP Verification
 router.post('/verify-otp', verifyEmailOtp);

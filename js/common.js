@@ -3,7 +3,7 @@
 // Use localhost for local development, Render URL for production
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:5000' 
-  : 'https://lifelink-3-fqca.onrender.com';
+  : 'https://lifelink-dmvb.onrender.com';
 
 /**
  * Fetch with timeout
