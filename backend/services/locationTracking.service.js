@@ -171,7 +171,7 @@ class LocationTrackingService {
   /**
    * Track a new request
    */
-  async trackRequest(userId, requestId, req) {
+  async trackRequest(userId, requestId, req, bloodRequestLocation = null) {
     // Extract IP address
     let ipAddress = req.ip || 
                     req.connection.remoteAddress || 
@@ -183,7 +183,14 @@ class LocationTrackingService {
       ipAddress = ipAddress.split('::ffff:')[1];
     }
 
-    const location = await this.getLocationFromIP(ipAddress);
+    // 🔄 Use blood request coordinates if provided, otherwise fallback to IP geolocation
+    let location = bloodRequestLocation ? {
+      city: bloodRequestLocation.city,
+      latitude: bloodRequestLocation.latitude,
+      longitude: bloodRequestLocation.longitude,
+      region: bloodRequestLocation.state || '',
+      country: 'India'
+    } : await this.getLocationFromIP(ipAddress);
     
     const tracking = new RequestTracking({
       userId,

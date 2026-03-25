@@ -30,7 +30,8 @@ exports.createRequest = async (req, res) => {
     const { tracking, analysis } = await locationTrackingService.trackRequest(
       req.user.id,
       null, // requestId will be set after creation
-      req
+      req,
+      { latitude, longitude, city }  // 👈 ADD BLOOD REQUEST COORDINATES
     );
 
     let suspicionReasons = [];
