@@ -12,7 +12,8 @@ const emailService = require('../services/email.service');
  */
 exports.getFlaggedRequests = async (req, res) => {
   try {
-    const flaggedAnalysis = await FakeRequestAnalysis.find({
+    // Get ML-detected fake requests
+    const mlFlaggedAnalysis = await FakeRequestAnalysis.find({
       prediction: 'fake',
       adminReviewed: false
     })
@@ -24,13 +25,80 @@ exports.getFlaggedRequests = async (req, res) => {
         }
       })
       .populate('userId', 'name email phone')
-      .sort({ analyzedAt: -1 })
-      .limit(100);
+      .sort({ analyzedAt: -1 });
+
+    // Get location-suspicious requests (severity >= 50)
+    const locationSuspiciousRequests = await BloodRequest.find({
+      locationSeverity: { $gte: 50 },
+      status: { $ne: 'rejected' } // Don't include already rejected requests
+    })
+      .populate('receiverId', 'name email phone')
+      .sort({ createdAt: -1 });
+
+    // Combine and deduplicate results
+    const combinedResults = [];
+    const requestIds = new Set();
+
+    // Add ML-flagged requests
+    mlFlaggedAnalysis.forEach(analysis => {
+      if (analysis.requestId && !requestIds.has(analysis.requestId._id.toString())) {
+        requestIds.add(analysis.requestId._id.toString());
+        combinedResults.push({
+          _id: analysis._id,
+          requestId: analysis.requestId,
+          userId: analysis.userId,
+          type: 'ml_detected',
+          prediction: analysis.prediction,
+          confidence: analysis.confidence,
+          mlScore: analysis.mlScore,
+          analyzedAt: analysis.analyzedAt,
+          adminReviewed: analysis.adminReviewed,
+          locationSeverity: analysis.requestId.locationSeverity || 0,
+          locationFlags: analysis.requestId.locationFlags || [],
+          reasons: [`ML Prediction: ${analysis.prediction} (${Math.round(analysis.confidence * 100)}% confidence)`]
+        });
+      }
+    });
+
+    // Add location-suspicious requests
+    locationSuspiciousRequests.forEach(request => {
+      if (!requestIds.has(request._id.toString())) {
+        requestIds.add(request._id.toString());
+        combinedResults.push({
+          _id: request._id,
+          requestId: request,
+          userId: request.receiverId,
+          type: 'location_suspicious',
+          prediction: 'suspicious',
+          locationSeverity: request.locationSeverity,
+          locationFlags: request.locationFlags,
+          analyzedAt: request.createdAt,
+          adminReviewed: false,
+          reasons: request.locationFlags.map(flag => {
+            switch(flag) {
+              case 'impossible_travel': return `Impossible travel (${request.locationDetails?.distanceFromLast || 0}km in ${request.locationDetails?.timeSinceLast || 0} minutes)`;
+              case 'location_jump': return 'Multiple locations in short time';
+              case 'rapid_requests': return 'Too many requests in short time';
+              case 'different_ip': return 'Different IP address in short time';
+              default: return flag;
+            }
+          })
+        });
+      }
+    });
+
+    // Sort by severity (highest first) then by date
+    combinedResults.sort((a, b) => {
+      const severityA = Math.max(a.locationSeverity || 0, a.mlScore || 0);
+      const severityB = Math.max(b.locationSeverity || 0, b.mlScore || 0);
+      if (severityA !== severityB) return severityB - severityA;
+      return new Date(b.analyzedAt || b.requestId.createdAt) - new Date(a.analyzedAt || a.requestId.createdAt);
+    });
 
     res.json({
       success: true,
-      count: flaggedAnalysis.length,
-      data: flaggedAnalysis
+      count: combinedResults.length,
+      data: combinedResults
     });
   } catch (error) {
     console.error('Get flagged requests error:', error);
@@ -48,7 +116,7 @@ exports.getFlaggedRequests = async (req, res) => {
  */
 exports.approveRequest = async (req, res) => {
   try {
-    const { adminNotes } = req.body;
+    const { adminNotes, requestType } = req.body;
 
     const request = await BloodRequest.findById(req.params.id);
 
@@ -67,7 +135,7 @@ exports.approveRequest = async (req, res) => {
     request.adminNotes = adminNotes;
     await request.save();
 
-    // Update ML analysis
+    // Update ML analysis if it exists
     await FakeRequestAnalysis.findOneAndUpdate(
       { requestId: request._id },
       {
@@ -77,6 +145,14 @@ exports.approveRequest = async (req, res) => {
         reviewNotes: adminNotes
       }
     );
+
+    // Clear location flags if this was location-suspicious
+    if (request.locationSeverity > 0) {
+      request.locationSuspicious = false;
+      request.locationSeverity = 0;
+      request.locationFlags = [];
+      await request.save();
+    }
 
     res.json({
       success: true,
@@ -90,7 +166,7 @@ exports.approveRequest = async (req, res) => {
       message: 'Error approving request'
     });
   }
-};
+};;
 
 /**
  * @desc    Reject a request (confirm as fake)
@@ -99,7 +175,7 @@ exports.approveRequest = async (req, res) => {
  */
 exports.rejectRequest = async (req, res) => {
   try {
-    const { adminNotes } = req.body;
+    const { adminNotes, requestType } = req.body;
 
     const request = await BloodRequest.findById(req.params.id);
 
@@ -118,7 +194,7 @@ exports.rejectRequest = async (req, res) => {
     request.adminNotes = adminNotes;
     await request.save();
 
-    // Update ML analysis
+    // Update ML analysis if it exists
     await FakeRequestAnalysis.findOneAndUpdate(
       { requestId: request._id },
       {

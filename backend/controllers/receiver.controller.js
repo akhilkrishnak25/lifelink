@@ -90,7 +90,18 @@ exports.createRequest = async (req, res) => {
       unitsRequired,
       patientName,
       description,
-      status: initialStatus
+      status: initialStatus,
+      // Save location analysis results
+      locationSuspicious: isSuspicious,
+      locationSeverity: suspicionSeverity,
+      locationFlags: analysis.flags,
+      locationDetails: {
+        ipAddress: tracking.ipAddress,
+        city: tracking.location?.city,
+        country: tracking.location?.country,
+        distanceFromLast: analysis.details.distanceFromLastLocation,
+        timeSinceLast: analysis.details.timeSinceLastRequest
+      }
     });
 
     // Update tracking with request ID
