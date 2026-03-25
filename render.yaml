@@ -22,6 +22,10 @@ services:
         value: https://lifelink-ml.onrender.com
       - key: FRONTEND_URL
         value: https://akhilkrishnak25.github.io/lifelink
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
 
   # ML Service
   - type: web

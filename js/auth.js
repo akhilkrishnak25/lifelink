@@ -21,69 +21,6 @@ async function finalizeLogin(response, successMessage = 'Login successful! Redir
   }, 1000);
 }
 
-async function handleGoogleCredentialResponse(googleResponse) {
-  if (!googleResponse || !googleResponse.credential) {
-    showAlert('Google sign-in failed. Please try again.', 'danger');
-    return;
-  }
-
-  try {
-    const response = await apiRequest('/api/auth/google-login', 'POST', {
-      idToken: googleResponse.credential
-    });
-
-    if (response.success) {
-      const message = response.data.isNewUser
-        ? 'Google account linked. Redirecting...'
-        : 'Google login successful! Redirecting...';
-      await finalizeLogin(response, message);
-    }
-  } catch (error) {
-    showAlert('❌ ' + (error.message || 'Google login failed. Please try again.'), 'danger');
-  }
-}
-
-async function initGoogleLogin(retries = 10) {
-  const container = document.getElementById('googleSignInBtn');
-  if (!container) return;
-
-  try {
-    const config = await apiRequest('/api/auth/google-config');
-    const clientId = config?.data?.clientId;
-
-    if (!clientId) {
-      container.textContent = 'Google login is not configured yet.';
-      return;
-    }
-
-    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
-      if (retries > 0) {
-        setTimeout(() => initGoogleLogin(retries - 1), 300);
-      } else {
-        container.textContent = 'Google sign-in is temporarily unavailable.';
-      }
-      return;
-    }
-
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredentialResponse
-    });
-
-    window.google.accounts.id.renderButton(container, {
-      theme: 'outline',
-      size: 'large',
-      shape: 'pill',
-      text: 'signin_with',
-      width: 320
-    });
-  } catch (error) {
-    container.textContent = 'Google sign-in setup failed.';
-  }
-}
-
-window.initGoogleLogin = initGoogleLogin;
-
 /**
  * Handle user login
  */
