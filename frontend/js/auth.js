@@ -1,88 +1,5 @@
 // Authentication JavaScript functions
 
-async function finalizeLogin(response, successMessage = 'Login successful! Redirecting...') {
-  localStorage.setItem('token', response.data.token);
-  localStorage.setItem('user', JSON.stringify(response.data.user));
-
-  showAlert(successMessage, 'success');
-
-  setTimeout(() => {
-    const role = response.data.user.role;
-    if (role === 'donor') {
-      window.location.href = 'donor-dashboard.html';
-    } else if (role === 'receiver') {
-      window.location.href = 'receiver-dashboard.html';
-    } else if (role === 'admin') {
-      window.location.href = 'admin-dashboard.html';
-    } else {
-      window.location.href = 'index.html';
-    }
-  }, 1000);
-}
-
-async function handleGoogleCredentialResponse(googleResponse) {
-  if (!googleResponse || !googleResponse.credential) {
-    showAlert('Google sign-in failed. Please try again.', 'danger');
-    return;
-  }
-
-  try {
-    const response = await apiRequest('/api/auth/google-login', 'POST', {
-      idToken: googleResponse.credential
-    });
-
-    if (response.success) {
-      const message = response.data.isNewUser
-        ? 'Google account linked. Redirecting...'
-        : 'Google login successful! Redirecting...';
-      await finalizeLogin(response, message);
-    }
-  } catch (error) {
-    showAlert('❌ ' + (error.message || 'Google login failed. Please try again.'), 'danger');
-  }
-}
-
-async function initGoogleLogin(retries = 10) {
-  const container = document.getElementById('googleSignInBtn');
-  if (!container) return;
-
-  try {
-    const config = await apiRequest('/api/auth/google-config');
-    const clientId = config?.data?.clientId;
-
-    if (!clientId) {
-      container.textContent = 'Google login is not configured yet.';
-      return;
-    }
-
-    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
-      if (retries > 0) {
-        setTimeout(() => initGoogleLogin(retries - 1), 300);
-      } else {
-        container.textContent = 'Google sign-in is temporarily unavailable.';
-      }
-      return;
-    }
-
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredentialResponse
-    });
-
-    window.google.accounts.id.renderButton(container, {
-      theme: 'outline',
-      size: 'large',
-      shape: 'pill',
-      text: 'signin_with',
-      width: 320
-    });
-  } catch (error) {
-    container.textContent = 'Google sign-in setup failed.';
-  }
-}
-
-window.initGoogleLogin = initGoogleLogin;
-
 /**
  * Handle user login
  */
@@ -115,7 +32,25 @@ async function handleLogin(event) {
     });
 
     if (response.success) {
-      await finalizeLogin(response);
+      // Store token and user data
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      showAlert('Login successful! Redirecting...', 'success');
+
+      // Redirect based on role
+      setTimeout(() => {
+        const role = response.data.user.role;
+        if (role === 'donor') {
+          window.location.href = 'donor-dashboard.html';
+        } else if (role === 'receiver') {
+          window.location.href = 'receiver-dashboard.html';
+        } else if (role === 'admin') {
+          window.location.href = 'admin-dashboard.html';
+        } else {
+          window.location.href = 'index.html';
+        }
+      }, 1000);
     }
   } catch (error) {
     showAlert(error.message || 'Login failed. Please try again.', 'danger');
