@@ -262,8 +262,9 @@
                                         <span class="info-value">${analysis.features?.timeGapHours ?? 0} hrs</span>
                                     </div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-top: 1rem;">
                                     <button class="btn btn-success" onclick="approveRequest('${esc(request._id)}')">✓ Approve (Genuine)</button>
+                                    <button class="btn btn-warning" onclick="cancelRequest('${esc(request._id)}')">🚫 Cancel Request</button>
                                     <button class="btn btn-danger" onclick="rejectRequest('${esc(request._id)}')">✗ Reject (Fake)</button>
                                 </div>
                             </div>
@@ -485,6 +486,91 @@
                 console.error('Error loading location detections:', error);
                 container.innerHTML = '<div class="alert alert-danger">Error loading location detection data</div>';
             }
+        }
+
+        // Admin action functions
+        async function approveRequest(requestId) {
+            if (!confirm('Are you sure you want to approve this request as genuine?')) return;
+            
+            const adminNotes = prompt('Admin notes (optional):', '');
+            
+            try {
+                const response = await apiRequest(`/api/admin/approve-request/${requestId}`, 'PUT', {
+                    adminNotes: adminNotes || 'Approved by admin'
+                });
+                
+                if (response.success) {
+                    showAlert('Request approved successfully!', 'success');
+                    loadFlaggedRequests();
+                    loadDashboardStats();
+                } else {
+                    showAlert('Error approving request: ' + (response.message || 'Unknown error'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error approving request:', error);
+                showAlert('Error approving request', 'danger');
+            }
+        }
+
+        async function rejectRequest(requestId) {
+            if (!confirm('Are you sure you want to reject this request as fake?')) return;
+            
+            const adminNotes = prompt('Admin notes (required for rejection):', '');
+            if (!adminNotes || adminNotes.trim() === '') {
+                showAlert('Admin notes are required for rejection', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await apiRequest(`/api/admin/reject-request/${requestId}`, 'PUT', {
+                    adminNotes: adminNotes
+                });
+                
+                if (response.success) {
+                    showAlert('Request rejected successfully!', 'success');
+                    loadFlaggedRequests();
+                    loadDashboardStats();
+                } else {
+                    showAlert('Error rejecting request: ' + (response.message || 'Unknown error'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error rejecting request:', error);
+                showAlert('Error rejecting request', 'danger');
+            }
+        }
+
+        async function cancelRequest(requestId) {
+            if (!confirm('Are you sure you want to cancel this request? This will remove it from circulation without marking it as fake.')) return;
+            
+            const adminNotes = prompt('Admin notes (optional):', '');
+            
+            try {
+                const response = await apiRequest(`/api/admin/cancel-request/${requestId}`, 'PUT', {
+                    adminNotes: adminNotes || 'Cancelled by admin'
+                });
+                
+                if (response.success) {
+                    showAlert('Request cancelled successfully!', 'success');
+                    loadFlaggedRequests();
+                    loadDashboardStats();
+                } else {
+                    showAlert('Error cancelling request: ' + (response.message || 'Unknown error'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error cancelling request:', error);
+                showAlert('Error cancelling request', 'danger');
+            }
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertClass = `alert alert-${type}`;
+            alertContainer.innerHTML = `<div class="${alertClass}" style="margin-bottom: 1rem;">${message}</div>`;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
         }
     </script>
 </body>

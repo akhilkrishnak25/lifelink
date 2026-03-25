@@ -5,6 +5,7 @@ const {
   getFlaggedRequests,
   approveRequest,
   rejectRequest,
+  cancelRequest,
   getAllRequests,
   getDashboardStats,
   getAllUsers,
@@ -33,6 +34,7 @@ router.use(protect);
 router.get('/flagged-requests', authorize('admin', 'super_admin'), getFlaggedRequests);
 router.put('/approve-request/:id', authorize('admin', 'super_admin'), approveRequest);
 router.put('/reject-request/:id', authorize('admin', 'super_admin'), rejectRequest);
+router.put('/cancel-request/:id', authorize('admin', 'super_admin'), cancelRequest);
 router.get('/requests', authorize('admin', 'super_admin'), getAllRequests);
 router.get('/stats', authorize('admin', 'super_admin'), getDashboardStats);
 router.get('/users', authorize('admin', 'super_admin'), getAllUsers);

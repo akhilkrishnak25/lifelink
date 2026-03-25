@@ -220,6 +220,65 @@ exports.rejectRequest = async (req, res) => {
 };
 
 /**
+ * @desc    Cancel a flagged request (remove from circulation without marking as fake)
+ * @route   PUT /api/admin/cancel-request/:id
+ * @access  Private (Admin only)
+ */
+exports.cancelRequest = async (req, res) => {
+  try {
+    const { adminNotes, requestType } = req.body;
+
+    const request = await BloodRequest.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Blood request not found'
+      });
+    }
+
+    // Update request - cancel without marking as fake
+    request.status = 'cancelled';
+    request.isFake = false; // Not fake, just cancelled
+    request.reviewedBy = req.user.id;
+    request.reviewedAt = new Date();
+    request.adminNotes = adminNotes;
+    await request.save();
+
+    // Update ML analysis if it exists (mark as reviewed but not fake)
+    await FakeRequestAnalysis.findOneAndUpdate(
+      { requestId: request._id },
+      {
+        adminReviewed: true,
+        adminDecision: 'cancelled',
+        reviewedBy: req.user.id,
+        reviewNotes: adminNotes
+      }
+    );
+
+    // Clear location flags if this was location-suspicious
+    if (request.locationSeverity > 0) {
+      request.locationSuspicious = false;
+      request.locationSeverity = 0;
+      request.locationFlags = [];
+      await request.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Request cancelled successfully',
+      data: request
+    });
+  } catch (error) {
+    console.error('Cancel request error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error cancelling request'
+    });
+  }
+};
+
+/**
  * @desc    Get all blood requests (admin view)
  * @route   GET /api/admin/requests
  * @access  Private (Admin only)
