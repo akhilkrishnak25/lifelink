@@ -35,6 +35,9 @@
                 <button type="submit" class="btn btn-primary btn-block">Login</button>
             </form>
 
+            <div style="text-align: center; margin: 1rem 0; color: #666;">or</div>
+            <div id="googleSignInBtn" style="display: flex; justify-content: center;"></div>
+
             <div style="text-align: center; margin-top: 1.5rem;">
                 <p>Don't have an account? <a href="register.html">Register here</a></p>
                 <p><a href="index.html">Back to Home</a></p>
@@ -67,9 +70,13 @@
     </div>
 
     <script src="js/common.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="js/auth.js"></script>
     <script>
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        if (typeof initGoogleLogin === 'function') {
+            initGoogleLogin();
+        }
     </script>
 </body>
 </html>

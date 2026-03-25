@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Donor = require('../models/Donor');
 const BloodRequest = require('../models/BloodRequest');
@@ -7,6 +9,7 @@ const emailService = require('../services/email.service');
 
 // Feature activation date - users created before this are auto-verified
 const EMAIL_OTP_FEATURE_DATE = new Date('2026-02-01T00:00:00.000Z');
+const googleClient = new OAuth2Client();
 
 /**
  * Generate JWT token
@@ -15,6 +18,139 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '30d'
   });
+};
+
+const generateOAuthPassword = () => crypto.randomBytes(24).toString('base64url');
+
+const derivePhoneFromGoogleSub = (sub = '') => {
+  const digits = String(sub).replace(/\D/g, '');
+
+  if (digits.length >= 10) {
+    return digits.slice(-10);
+  }
+
+  const fallbackDigits = `9${Date.now()}`.replace(/\D/g, '');
+  return fallbackDigits.slice(-10).padStart(10, '0');
+};
+
+/**
+ * @desc    Get Google login client config
+ * @route   GET /api/auth/google-config
+ * @access  Public
+ */
+exports.getGoogleConfig = async (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      enabled: Boolean(process.env.GOOGLE_CLIENT_ID),
+      clientId: process.env.GOOGLE_CLIENT_ID || null
+    }
+  });
+};
+
+/**
+ * @desc    Login/Register with Google ID token
+ * @route   POST /api/auth/google-login
+ * @access  Public
+ */
+exports.googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google token is required'
+      });
+    }
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(503).json({
+        success: false,
+        message: 'Google login is not configured on server'
+      });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload || !payload.email || !payload.email_verified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Google account email is not verified'
+      });
+    }
+
+    const email = payload.email.toLowerCase().trim();
+    const name = payload.name?.trim() || 'Google User';
+
+    let user = await User.findOne({ email }).select('+password');
+    let isNewUser = false;
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        password: generateOAuthPassword(),
+        phone: derivePhoneFromGoogleSub(payload.sub),
+        role: 'user',
+        isEmailVerified: true,
+        accountStatus: 'active'
+      });
+      isNewUser = true;
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is deactivated. Please contact support.'
+      });
+    }
+
+    if (user.role === 'admin' && user.accountStatus !== 'approved') {
+      if (user.accountStatus === 'pending') {
+        return res.status(403).json({
+          success: false,
+          message: 'Your admin account is pending approval. Please wait for Super Admin approval.',
+          code: 'ADMIN_APPROVAL_PENDING'
+        });
+      }
+
+      if (user.accountStatus === 'rejected') {
+        return res.status(403).json({
+          success: false,
+          message: 'Your admin registration was rejected. Please contact support.',
+          code: 'ADMIN_REJECTED',
+          reason: user.rejectionReason
+        });
+      }
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = generateToken(user._id);
+
+    res.json({
+      success: true,
+      message: isNewUser ? 'Google account linked successfully' : 'Login successful',
+      data: {
+        user: user.getPublicProfile(),
+        token,
+        isNewUser
+      }
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Google login failed. Please try again.'
+    });
+  }
 };
 
 /**

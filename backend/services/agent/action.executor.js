@@ -1,6 +1,7 @@
 const notificationService = require('../notification.service');
 const Notification = require('../../models/Notification');
 const Message = require('../../models/Message');
+const UserPreference = require('../../models/UserPreference');
 
 /**
  * Action Executor Service
@@ -10,7 +11,7 @@ const Message = require('../../models/Message');
 
 class ActionExecutor {
   constructor(io) {
-    this.io = io; // kept for backward compatibility, not used for donor notifications
+    this.io = io;
     this.executionLog = [];
   }
 
@@ -91,6 +92,18 @@ class ActionExecutor {
     const Donor = require('../../models/Donor');
     
     const donors = await Donor.find({ _id: { $in: donorIds } }).populate('userId');
+
+    const donorUserIds = donors
+      .map(donor => donor?.userId?._id)
+      .filter(Boolean);
+
+    const preferenceDocs = await UserPreference.find({
+      userId: { $in: donorUserIds }
+    }).select('userId notifications.email.enabled');
+
+    const preferenceMap = new Map(
+      preferenceDocs.map(doc => [doc.userId.toString(), doc])
+    );
     
     console.log(`📣 [_notifyDonors] Found ${donors.length} donors in database`);
 
@@ -141,17 +154,26 @@ class ActionExecutor {
         console.error(`❌ Failed to save notification for donor ${donor.userId._id}:`, notifError.message);
       }
 
-      // Real-time socket emission is intentionally skipped.
-      // Donor view reads AI matches from persisted notifications via API polling.
+      // Deliver immediate in-app alert for connected donors.
+      if (this.io) {
+        this.io.to(donor.userId._id.toString()).emit('notification', notification);
+      }
 
-      // Send email if configured
-      if (donor.userId.email && process.env.EMAIL_USER) {
+      const preferences = preferenceMap.get(donor.userId._id.toString());
+      const emailEnabled = preferences
+        ? preferences.notifications?.email?.enabled !== false
+        : true;
+
+      // Send email only if configured and not disabled by donor preference.
+      if (emailEnabled && donor.userId.email && process.env.EMAIL_USER) {
         const emailHtml = this._createEmailTemplate(notification, requestData, donorScore);
         await notificationService.sendEmailNotification(
           donor.userId.email,
           notification.title,
           emailHtml
         );
+      } else if (!emailEnabled) {
+        console.log(`📧 Email disabled by preference for donor ${donor.userId._id}`);
       }
 
       console.log(`📢 Notified donor ${donor.userId.name} (Score: ${donorScore?.score || 'N/A'})`);
@@ -279,6 +301,9 @@ class ActionExecutor {
    * Create email template for notifications
    */
   _createEmailTemplate(notification, requestData, donorScore) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const donorDashboardUrl = `${frontendUrl.replace(/\/$/, '')}/donor-dashboard.html`;
+
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc3545;">${notification.title}</h2>
@@ -303,7 +328,7 @@ class ActionExecutor {
         ` : ''}
 
         <p style="margin-top: 20px;">
-          <a href="http://localhost:3000/donor-dashboard.html" 
+          <a href="${donorDashboardUrl}" 
              style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
             Respond to Request
           </a>
